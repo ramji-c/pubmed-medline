@@ -14,7 +14,7 @@ class FeatureExtractor:
 
     def __init__(self):
         self.stemmer = SnowballStemmer('english')
-        self.vectorizer = TfidfVectorizer(stop_words='english', min_df=0.1, max_df=0.8, analyzer='word')
+        self.vectorizer = TfidfVectorizer(stop_words='english', analyzer='word')
         self.vector_features = []
         self.lda_model = None
         self.config_handler = configparser.ConfigParser()

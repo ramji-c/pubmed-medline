@@ -23,15 +23,15 @@ class Cluster:
         # load config file
         self._load_config()
 
-        self.NCLUSTERS = self.cfg_mgr.get('clustering', 'clusters.count')
-        self.NITER = self.cfg_mgr.get('clustering', 'iterations.count')
+        self.NCLUSTERS = int(self.cfg_mgr.get('clustering', 'clusters.count'))
+        self.NITER = int(self.cfg_mgr.get('clustering', 'iterations.count'))
         self.NTOPICS = 10
 
         self.model = None
         self.svd = None
 
     def _load_config(self):
-        self.cfg_mgr.read(os.path.abspath(os.path.join(self.script_dir, "..\..", "config", "default.cfg")))
+        self.cfg_mgr.read(os.path.abspath(os.path.join(self.script_dir, "..", "config", "default.cfg")))
 
     def do_kmeans(self, dataset):
         # normalization

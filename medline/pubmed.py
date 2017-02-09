@@ -25,8 +25,12 @@ class PubMed:
 
         # load input file into a pandas dataframe
         custom_input_parser = input_parser.AbstractsParser()
-        data_loader = loader.AbstractsLoader(input_file, custom_input_parser)
-        input_dataframe = data_loader.load_(as_="dataframe", limit=1000)
+        data_loader = loader.AbstractsXmlLoader(input_file)
+        input_dataframe = data_loader.load_(as_="dataframe")
+        # self._export_results('temp_out.xlsx', input_dataframe, format='xlsx', sheet_names=['clusters'], indices=[False])
+
+        # clean input_dataframe; drop empty rows
+        input_dataframe.dropna(inplace=True)
 
         # use Tf-Idf vectorizer to transform data
         vectorizer = features.FeatureExtractor()
@@ -40,7 +44,7 @@ class PubMed:
         output_df = pandas.DataFrame(cluster_ids, index=input_dataframe.index)
         output_df = output_df.join(input_dataframe['title'])
         output_df = output_df.join(input_dataframe['permalink'])
-        self._export_results(output_file, output_df, sheet_names=['clusters'], indices=[False])
+        self._export_results(output_file, output_df, format='xlsx', sheet_names=['clusters'], indices=[False])
 
     def _export_results(self, filename, *dataframes, **fileparams):
         file_format = fileparams['format']

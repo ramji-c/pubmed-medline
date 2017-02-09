@@ -32,15 +32,17 @@ if __name__ == "__main__":
     cfg_mgr = ConfigMgr()
     cfg_mgr.create_sections(['input', 'clustering', 'feature-extraction', 'output'])
 
-    cfg_mgr.add_config_entry('input', {'input.file.type': '.txt'})
+    cfg_mgr.add_config_entry('input', {'input.file.type': '.txt,.xml'})
     cfg_mgr.add_config_entry('input', {'input.filters': 'none'})
     cfg_mgr.add_config_entry('input', {'abstracts.record.separator': "SEGMENTBREAK"})
     cfg_mgr.add_config_entry('input', {'abstracts.parser.content.index': '4'})
     cfg_mgr.add_config_entry('input', {'abstracts.parser.permalink.index': '-2'})
     cfg_mgr.add_config_entry('input', {'abstracts.parser.title.index': '1'})
 
-    cfg_mgr.add_config_entry('clustering', {'clusters.count': '100'})
-    cfg_mgr.add_config_entry('clustering', {'iterations.count': '5'})
+    cfg_mgr.add_config_entry('output', {'permalink.base.url': "https://www.ncbi.nlm.nih.gov/pubmed/"})
+
+    cfg_mgr.add_config_entry('clustering', {'clusters.count': '50'})
+    cfg_mgr.add_config_entry('clustering', {'iterations.count': '7'})
     cfg_mgr.add_config_entry('clustering', {'cluster.terms.count': '20'})
 
     cfg_mgr.save_config_file("default.cfg")

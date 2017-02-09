@@ -40,7 +40,10 @@ class AbstractsParser(InputParser):
 
     def _extract_pmid(self, data):
         pattern = re.compile("PMID\:\s+(\d{8})")
-        pmid = re.search(pattern, data).groups()[0]
+        try:
+            pmid = re.search(pattern, data).groups()[0]
+        except AttributeError:
+            pmid = None
         return pmid
 
     def parse_(self, data):
@@ -52,8 +55,11 @@ class AbstractsParser(InputParser):
         title_ind = int(self.cfg_mgr.get('input', 'abstracts.parser.title.index'))
         record_sep = self.cfg_mgr.get('input', 'abstracts.record.separator')
 
-        data_split = data.split(record_sep)
-        parsed_text["content"] = data_split[content_ind]
-        parsed_text["title"] = data_split[title_ind]
-        parsed_text["permalink"] = self._extract_pmid(data_split[permalink_ind])
+        try:
+            data_split = data.split(record_sep)
+            parsed_text["content"] = data_split[content_ind]
+            parsed_text["title"] = data_split[title_ind]
+            parsed_text["permalink"] = self._extract_pmid(data_split[permalink_ind])
+        except IndexError:
+            print("Invalid record format")
         return parsed_text
