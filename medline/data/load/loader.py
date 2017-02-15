@@ -11,7 +11,7 @@ from medline.utils import input_parser
 
 class Loader:
 
-    """base loader class"""
+    """base class"""
 
     def __init__(self):
         self.cfg_mgr = configparser.ConfigParser()
@@ -21,6 +21,10 @@ class Loader:
         self.cfg_mgr.read(os.path.abspath(os.path.join(self.script_dir, "..\..", "config", "default.cfg")))
 
     def _validate_file(self, filename):
+        """validates input file format and type
+        Parameters:
+            filename: fully qualified path of input file"""
+
         supported_formats = tuple(self.cfg_mgr.get('input', 'input.file.type').split(","))
         if os.path.isdir(filename):
             raise ValueError("filename is a directory. expected: a file")
@@ -120,8 +124,8 @@ class AbstractsXmlLoader(Loader, ContentHandler):
         # extract config params
         self.pmid_base_url = self.cfg_mgr.get('output', 'permalink.base.url')
 
-    def _load_config(self):
-        self.cfg_mgr.read(os.path.abspath(os.path.join(self.script_dir, "..\..", "config", "default.cfg")))
+    # def _load_config(self):
+    #     self.cfg_mgr.read(os.path.abspath(os.path.join(self.script_dir, "..\..", "config", "default.cfg")))
 
     def _read_file(self):
         return self.filename
@@ -148,27 +152,31 @@ class AbstractsXmlLoader(Loader, ContentHandler):
         self.char_buffer = []
 
     def endDocument(self):
-        print("end of document")
+        print("XML file parsing complete")
 
     def startDocument(self):
-        print("start of document")
+        print("Begin XML file parsing")
 
     def endElement(self, name):
-        if name == "PubmedArticle":
-            pass
-        elif name == "ArticleTitle":
-            self.data_dict[self.data_index]['title'] = self._get_content()
-        elif name == "Abstract":
-            self.data_dict[self.data_index]['content'] = self._get_content()
-        elif name == "PMID":
-            self.data_dict[self.data_index]['permalink'] = self.pmid_base_url + self._get_content()
-        elif name == "DateCreated":
-            pass
-        else:
-            pass
+        try:
+            if name == "PubmedArticle":
+                pass
+            elif name == "ArticleTitle":
+                self.data_dict[self.data_index]['title'] = self._get_content()
+            elif name == "Abstract":
+                self.data_dict[self.data_index]['content'] = self._get_content()
+            elif name == "PMID":
+                self.data_dict[self.data_index]['permalink'] = self.pmid_base_url + self._get_content()
+            elif name == "DateCreated":
+                pass
+            else:
+                pass
+        except KeyError:
+            print("Invalid xml - start tag missing")
 
     def startElement(self, name, attrs):
         if name == "PubmedArticle":
+            print("Reading Article #: {0}".format(self.data_index+1))
             self.data_index += 1
             self.data_dict[self.data_index] = {}
             self._flush_char_buffer()
