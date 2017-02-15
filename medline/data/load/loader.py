@@ -18,7 +18,8 @@ class Loader:
         self.script_dir = os.path.dirname(__file__)
 
     def _load_config(self):
-        self.cfg_mgr.read(os.path.abspath(os.path.join(self.script_dir, "..\..", "config", "default.cfg")))
+        self.cfg_mgr.read(os.path.abspath(os.path.join(self.script_dir, "../..", "config",
+                                                       "default.cfg")))
 
     def _validate_file(self, filename):
         """validates input file format and type
@@ -141,7 +142,10 @@ class AbstractsXmlLoader(Loader, ContentHandler):
         parse(self._read_file(), self)
 
         # parsing complete. return the collated data
-        return pandas.DataFrame.from_dict(self.data_dict, orient='index')
+        if as_ == "dataframe":
+            return pandas.DataFrame.from_dict(self.data_dict, orient='index')
+        else:
+            return self.data_dict
 
     def _get_content(self):
         content = " ".join(self.char_buffer).strip()
