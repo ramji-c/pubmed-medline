@@ -11,6 +11,7 @@ import argparse
 import configparser
 import os
 import urllib
+from medline.utils.export_results import export_dataframe
 
 
 class PubMed:
@@ -33,7 +34,9 @@ class PubMed:
             ->cluster the transformed data
         Parameters:
             input_file: fully qualified filename containing PubMed journals
-            output_file: fully qualified name of output file(.xlsx) to be generated"""
+            in_format: format of input file
+            output_file: fully qualified name of output file(.xlsx) to be generated
+            out_format: format of output file"""
 
         # create appropriate loader object
         if in_format == "xml":
@@ -73,34 +76,9 @@ class PubMed:
         #     cluster_urls.append(full_url)
         #     full_url = ""
         # custom_output_df = pandas.DataFrame(cluster_urls, columns=['clickable content'])
-        # self._export_results(output_file, custom_output_df, format=out_format, sheet_names=['clusters'], indices=[False])
-        self._export_results(output_file, output_df, cluster_kw_df, format=out_format,
-                             sheet_names=['clusters', 'cluster keywords'], indices=[False, False])
-
-    def _export_results(self, filename, *dataframes, **fileparams):
-        """helper function to export multiple pandas dataframes to a .xlsx or .csv file.
-        Parameters:
-            filename: name of the .xlsx or .csv file to be saved
-            *dataframes: 1 or more pandas dataframe
-            **fileparams: dictionary of params as follows
-                format: output file format. default: xlsx
-                sheetnames: list of 1 or more sheet name corresponding to each dataframe
-                indices: list of 1 or more boolean values that indicate if index of corresponding dataframe should be
-                         exported"""
-
-        file_format = fileparams['format']
-        if file_format == 'xlsx':
-            writer = pandas.ExcelWriter(filename)
-            for ind, dataframe in enumerate(dataframes):
-                sheet_name = fileparams['sheet_names'][ind]
-                keep_index = fileparams['indices'][ind]
-                dataframe.to_excel(writer, sheet_name=sheet_name, engine='xlsxwriter', index=keep_index)
-            writer.save()
-            writer.close()
-        elif file_format == 'csv':
-            for ind, dataframe in enumerate(dataframes):
-                keep_index = fileparams['indices'][ind]
-                dataframe.to_csv(filename, index=keep_index)
+        # export_dataframe(output_file, custom_output_df, format=out_format, sheet_names=['clusters'], indices=[False])
+        export_dataframe(output_file, output_df, cluster_kw_df, format=out_format,
+                         sheet_names=['clusters', 'cluster keywords'], indices=[False, False])
 
 
 if __name__ == "__main__":
