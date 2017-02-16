@@ -10,7 +10,7 @@ import argparse
 
 class Serializer:
     """use this script to load large datasets into a python dict or other data structure, which is then pickled.
-    run this script before repeated analysis of a large dataset, if long data loading times are to be avoided"""
+    run this script before repeated analyses of large datasets, if long data loading times are to be avoided"""
 
     def __init__(self, input_file, in_format, output_file):
 

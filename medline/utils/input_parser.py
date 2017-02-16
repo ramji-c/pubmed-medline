@@ -25,8 +25,8 @@ class DefaultParser(InputParser):
 
 class AbstractsParser(InputParser):
 
-    """parse pubmed abstract text files. abstract text files contain various sections, some of which
-        can be removed before data processing"""
+    """parse PubMed abstract text files. Abstracts are made up of several sections typically delimited by \n\n.
+    With use of regualr expressions, each abstract is parsed and its contents stored section-wise in a python dict"""
 
     def __init__(self):
         self.cfg_mgr = configparser.ConfigParser()

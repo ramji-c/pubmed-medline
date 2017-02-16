@@ -42,8 +42,7 @@ class Loader:
 
 class AbstractsTextLoader(Loader):
 
-    """Loads PubMed data from input file.
-    Accepted inputs formats: .txt"""
+    """Loads PubMed data from input .txt file."""
 
     def __init__(self, filename, parser=input_parser.DefaultParser()):
         super(AbstractsTextLoader).__init__()
@@ -104,8 +103,7 @@ class AbstractsTextLoader(Loader):
 
 class AbstractsXmlLoader(Loader, ContentHandler):
 
-    """load PubMed abstracts from file
-    Accepted inputs: .xml"""
+    """load PubMed abstracts from .xml file"""
 
     def __init__(self, filename, parser=input_parser.DefaultParser()):
         super(AbstractsXmlLoader).__init__()
@@ -124,9 +122,6 @@ class AbstractsXmlLoader(Loader, ContentHandler):
 
         # extract config params
         self.pmid_base_url = self.cfg_mgr.get('output', 'permalink.base.url')
-
-    # def _load_config(self):
-    #     self.cfg_mgr.read(os.path.abspath(os.path.join(self.script_dir, "..\..", "config", "default.cfg")))
 
     def _read_file(self):
         return self.filename
@@ -155,6 +150,7 @@ class AbstractsXmlLoader(Loader, ContentHandler):
     def _flush_char_buffer(self):
         self.char_buffer = []
 
+    # SAX parser callback functions section
     def endDocument(self):
         print("XML file parsing complete")
 

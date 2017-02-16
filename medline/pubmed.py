@@ -10,14 +10,14 @@ import pandas
 import argparse
 import configparser
 import os
-import urllib
 from medline.utils.export_results import export_dataframe
 
 
 class PubMed:
 
     """cluster PubMed-Medline journals using various k-means algorithm. Input data can be PubMed abstracts in the form
-    of text or XML file. Output will be a .xlsx file with each input abstract given a cluster id"""
+    of text or XML file. Output will be a .xlsx or .csv file with each input abstract assigned a cluster id and top
+    cluster keywords/terms for each cluster"""
 
     def __init__(self):
         self.cfg_mgr = configparser.ConfigParser()
@@ -60,23 +60,11 @@ class PubMed:
 
         # extract clustering output
         output_df = pandas.DataFrame(cluster_ids, index=input_dataframe.index)
-        # output_df = output_df.join(input_dataframe['title'])
         output_df = output_df.join(input_dataframe['permalink'])
         output_df.columns = ['cluster_id', 'permalink']
 
         cluster_kw_df = pandas.DataFrame(cluster_mgr.get_top_cluster_terms(vectorizer.get_features(), num_terms=20),
                                          columns=['top cluster keywords'])
-
-        # base_url = self.cfg_mgr.get('output', 'permalink.base.search.url')
-        # num_clusters = self.cfg_mgr.get('clustering', 'clusters.count')
-        # cluster_urls = []
-        # for cluster_id in range(int(num_clusters)):
-        #     search_terms = pandas.Series(output_df[output_df['cluster_id'] == cluster_id]['permalink']).tolist()
-        #     full_url = base_url + urllib.parse.quote(" ".join(search_terms))
-        #     cluster_urls.append(full_url)
-        #     full_url = ""
-        # custom_output_df = pandas.DataFrame(cluster_urls, columns=['clickable content'])
-        # export_dataframe(output_file, custom_output_df, format=out_format, sheet_names=['clusters'], indices=[False])
         export_dataframe(output_file, output_df, cluster_kw_df, format=out_format,
                          sheet_names=['clusters', 'cluster keywords'], indices=[False, False])
 
