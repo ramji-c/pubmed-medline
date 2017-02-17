@@ -4,12 +4,16 @@
 import os
 import configparser
 import pandas
+import pickle
+import logging
 from xml.sax.handler import ContentHandler
 from xml.sax import parse
+
 from medline.utils import input_parser
 
 
-class Loader:
+
+class Loader(object):
 
     """base class"""
 
@@ -106,7 +110,8 @@ class AbstractsXmlLoader(Loader, ContentHandler):
     """load PubMed abstracts from .xml file"""
 
     def __init__(self, filename, parser=input_parser.DefaultParser()):
-        super(AbstractsXmlLoader).__init__()
+        super(AbstractsXmlLoader, self).__init__()
+        logging.basicConfig(format='%(asctime)s::%(levelname)s::%(message)s', level=logging.INFO)
         self.filename = filename
         self.cfg_mgr = configparser.ConfigParser()
         self.script_dir = os.path.dirname(__file__)
@@ -129,7 +134,7 @@ class AbstractsXmlLoader(Loader, ContentHandler):
     def load_(self, as_, limit=None):
         """load input data file into a format specified. supports pandas dataframe
            Parameters:
-                as_: data structure to load data into. default = dataframe
+                as_: data structure to load data into.
                limit: # of data items to be loaded. default = None
         """
 
@@ -139,6 +144,8 @@ class AbstractsXmlLoader(Loader, ContentHandler):
         # parsing complete. return the collated data
         if as_ == "dataframe":
             return pandas.DataFrame.from_dict(self.data_dict, orient='index')
+        elif as_ == "files":
+            return self.num_docs_processed, self.temp_filenames
         else:
             return self.data_dict
 
@@ -152,15 +159,16 @@ class AbstractsXmlLoader(Loader, ContentHandler):
 
     # SAX parser callback functions section
     def endDocument(self):
-        print("XML file parsing complete")
+        logging.info("XML file parsing complete")
 
     def startDocument(self):
-        print("Begin XML file parsing")
+        logging.info("Begin XML file parsing")
 
     def endElement(self, name):
         try:
             if name == "PubmedArticle":
-                pass
+                if not 'content' in self.data_dict[self.data_index]:
+                    del self.data_dict[self.data_index]
             elif name == "ArticleTitle":
                 self.data_dict[self.data_index]['title'] = self._get_content()
             elif name == "Abstract":
@@ -172,11 +180,10 @@ class AbstractsXmlLoader(Loader, ContentHandler):
             else:
                 pass
         except KeyError:
-            print("Invalid xml - start tag missing")
+            logging.warning("Invalid xml element - end tag missing")
 
     def startElement(self, name, attrs):
         if name == "PubmedArticle":
-            print("Reading Article #: {0}".format(self.data_index+1))
             self.data_index += 1
             self.data_dict[self.data_index] = {}
             self._flush_char_buffer()
@@ -187,3 +194,71 @@ class AbstractsXmlLoader(Loader, ContentHandler):
 
     def characters(self, content):
         self.char_buffer.append(content)
+
+
+class AbstractsXmlSplitLoader(AbstractsXmlLoader):
+    """parse PubMed input .xml file but pickle subsets of extracted data in a temporary folder.
+    extends AbstractsXmlLoader"""
+
+    def __init__(self, filename, threshold=100000):
+        super(AbstractsXmlSplitLoader, self).__init__(filename)
+
+        self.threshold = threshold
+        self.num_docs_read = 0
+        self.temp_filenames = []
+        self.temp_files_dir = self.cfg_mgr.get('input', 'temp.data.directory')
+        self.temp_file_basename = "filepart."
+        self.filepart = 1
+        self.num_docs_processed = 0
+
+    def endDocument(self):
+        logging.info("XML file parsing complete")
+        self._check_and_save_temporary_file(eof=True)
+        logging.info("# invalid xml documents: {0}".format(self.num_docs_read - self.num_docs_processed))
+
+    def endElement(self, name):
+        super(AbstractsXmlSplitLoader, self).endElement(name)
+        if name == "PubmedArticle":
+            self._check_and_save_temporary_file()
+            self.num_docs_processed += 1
+
+    def startElement(self, name, attrs):
+        super(AbstractsXmlSplitLoader, self).startElement(name, attrs)
+        if name == "PubmedArticle":
+            self.num_docs_read += 1
+
+    def load_(self, as_, limit=None):
+        """load input data file into a specified format.
+              Parameters:
+                   as_: data structure to load data into. supports only "files"
+                  limit: # of data items to be loaded. default = None
+        """
+
+        # exit if as_ value is not 'files'
+        if as_ != "files":
+            raise ValueError("invalid value for param as_. only 'files' is supported")
+        else:
+            # parse the input xml file
+            parse(self._read_file(), self)
+            logging.info("total docs processed: {0}".format(self.num_docs_processed))
+            return self.num_docs_processed, self.temp_filenames
+
+    def _check_and_save_temporary_file(self, eof=False):
+        """ check if # documents read is a multiple of threshold and if so, pickle data read so far and flush holding
+        data structures"""
+
+        if eof or self.data_index >= (self.filepart * self.threshold):
+            # threshold reached - pickle in-memory data and flush data structures
+            print("# docs read: {0}".format(self.num_docs_read))
+            logging.info("threshold reached. saving data to temporary file")
+            full_filename = self.temp_files_dir + self.temp_file_basename + str(self.filepart)
+            try:
+                with open(full_filename, 'wb') as filehandle:
+                    pickle.dump(self.data_dict, filehandle)
+                    self.filepart += 1
+                    self.temp_filenames.append(full_filename)
+            except IOError:
+                logging.error("unable to save temporary data file")
+
+            # flush data structures
+            self.data_dict.clear()

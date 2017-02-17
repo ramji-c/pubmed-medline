@@ -3,9 +3,10 @@
 # load source data and save it in a pickled intermediate data structure
 
 import pickle
+import argparse
+
 from medline.data.load import loader
 from medline.utils import input_parser
-import argparse
 
 
 class Serializer:
