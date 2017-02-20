@@ -9,7 +9,6 @@ import configparser
 
 
 class FeatureExtractor:
-
     """extract features from input data - typically by vectorizing the data using Tf-Idf or Hashing vectorizers
     tuning parameters for feature extraction can be specified in default.cfg file under 'feature-extraction' section"""
 

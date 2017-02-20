@@ -8,7 +8,6 @@ import re
 
 
 class InputParser:
-
     """abstract base class for pubmed data parsers"""
 
     def parse_(self, data):
@@ -24,7 +23,6 @@ class DefaultParser(InputParser):
 
 
 class AbstractsParser(InputParser):
-
     """parse PubMed abstract text files. Abstracts are made up of several sections typically delimited by \n\n.
     With use of regualr expressions, each abstract is parsed and its contents stored section-wise in a python dict"""
 

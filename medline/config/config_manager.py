@@ -6,8 +6,7 @@ import configparser
 
 
 class ConfigMgr:
-
-    """Config Manager script to add, delete or modify config entries.
+    """script to add, delete or modify config entries.
     config entries are used to alter tuning parameters of PubMed clustering; as well as data handling programs.
     config parameters can also be directly edited in the config/default.cfg file"""
 
@@ -44,7 +43,7 @@ if __name__ == "__main__":
     cfg_mgr.add_config_entry('output', {'permalink.base.url': "https://www.ncbi.nlm.nih.gov/pubmed/"})
     cfg_mgr.add_config_entry('output', {'permalink.base.search.url': "https://www.ncbi.nlm.nih.gov/pubmed/?term="})
 
-    cfg_mgr.add_config_entry('clustering', {'clusters.count': '100'})
+    cfg_mgr.add_config_entry('clustering', {'clusters.count': '1000'})
     cfg_mgr.add_config_entry('clustering', {'iterations.count': '5'})
     cfg_mgr.add_config_entry('clustering', {'cluster.terms.count': '20'})
 

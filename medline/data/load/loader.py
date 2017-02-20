@@ -12,7 +12,6 @@ from xml.sax import parse
 from medline.utils import input_parser
 
 
-
 class Loader(object):
 
     """base class"""
@@ -45,7 +44,6 @@ class Loader(object):
 
 
 class AbstractsTextLoader(Loader):
-
     """Loads PubMed data from input .txt file."""
 
     def __init__(self, filename, parser=input_parser.DefaultParser()):
@@ -106,7 +104,6 @@ class AbstractsTextLoader(Loader):
 
 
 class AbstractsXmlLoader(Loader, ContentHandler):
-
     """load PubMed abstracts from .xml file"""
 
     def __init__(self, filename, parser=input_parser.DefaultParser()):
@@ -144,8 +141,6 @@ class AbstractsXmlLoader(Loader, ContentHandler):
         # parsing complete. return the collated data
         if as_ == "dataframe":
             return pandas.DataFrame.from_dict(self.data_dict, orient='index')
-        elif as_ == "files":
-            return self.num_docs_processed, self.temp_filenames
         else:
             return self.data_dict
 
@@ -167,7 +162,8 @@ class AbstractsXmlLoader(Loader, ContentHandler):
     def endElement(self, name):
         try:
             if name == "PubmedArticle":
-                if not 'content' in self.data_dict[self.data_index]:
+                if 'content' not in self.data_dict[self.data_index] or \
+                                'permalink' not in self.data_dict[self.data_index]:
                     del self.data_dict[self.data_index]
             elif name == "ArticleTitle":
                 self.data_dict[self.data_index]['title'] = self._get_content()

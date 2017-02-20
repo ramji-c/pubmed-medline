@@ -3,6 +3,7 @@
 # stream data from temporary files
 
 import pickle
+import queue
 
 
 class DataStreamer:
@@ -17,5 +18,5 @@ class DataStreamer:
             with open(file, 'rb') as filehandle:
                 doc_dict = pickle.load(filehandle)
                 for doc_id, doc in doc_dict.items():
-                    yield doc['content']
+                    yield doc['permalink'], doc['content']
 

@@ -7,16 +7,17 @@ from medline.data.extract import features
 from medline.model import cluster
 from medline.utils import input_parser, data_streamer
 from medline.utils.export_results import export_dataframe
+from medline.utils.collate_results import collate_
 
 import pandas
 import argparse
 import configparser
 import os
 import logging
+import numpy
 
 
 class PubMed:
-
     """cluster PubMed-Medline journals using k-means algorithm. Input data can be PubMed abstracts in the form
     of text or XML file. Output will be a .xlsx or .csv file with each input abstract assigned a cluster id and top
     cluster keywords/terms for each cluster"""
@@ -30,7 +31,7 @@ class PubMed:
     def _load_config(self):
         self.cfg_mgr.read(os.path.abspath(os.path.join(self.script_dir, "config", "default.cfg")))
 
-    def process(self, input_file, in_format, output_file, out_format, large_file, use_temp_files):
+    def process(self, input_file, in_format, output_file, out_format, large_file, use_temp_files, collate):
         """resembles a data processing pipeline.
             ->load input file into a pandas dataframe(for file size < 2 GB)
             ->transform data into Tf-Idf or Hashing vector
@@ -43,7 +44,7 @@ class PubMed:
             large_file: flag to indicate if input file is larger than 2 GB
             use_temp_files: use temporary pre-processed files(if available) and skip laoding input file"""
 
-        logging.info("Processing starts")
+        logging.info("Processing begins..initializing appropriate loader class")
         # create appropriate loader object
         if in_format == "xml":
             if large_file:
@@ -55,28 +56,44 @@ class PubMed:
             data_loader = loader.AbstractsTextLoader(input_file, custom_input_parser)
 
         if large_file:
-            self._process_large_file(data_loader, output_file, out_format)
+            self._process_large_file(data_loader, output_file, out_format, collate)
         else:
             # smaller datasets can be processed using pandas dataframe and any in-memory vectorizer
             self._process_with_dataframe(data_loader, output_file, out_format)
 
-    def _process_large_file(self, data_loader, output_file, out_format):
+    def _process_large_file(self, data_loader, output_file, out_format, collate):
         """stream data from temporary files to a hashing vectorizer to reduce memory overload"""
 
         # load and stream input data
-        logging.info("saving input data into temporary files")
+        logging.info("large file detected..saving input data in temporary files")
         total_docs, temp_data_files = data_loader.load_(as_="files")
         datastreamer_obj = data_streamer.DataStreamer(temp_data_files)
         print(temp_data_files)
+
         # use Hashing vectorizer to transform data
         logging.info("transforming text - with Hashing vectorizer")
+        contents_list = [(pmid, body) for pmid, body in datastreamer_obj.read()]
         vectorizer = features.FeatureExtractor(vectorizer_type='hashing')
-        vectorized_data = vectorizer.vectorize_text([doc for doc in datastreamer_obj.read()])
+        vectorized_data = vectorizer.vectorize_text([contents[1] for contents in contents_list])
 
         # cluster transformed data
         logging.info("clustering begins")
         cluster_mgr = cluster.Cluster()
         cluster_ids = cluster_mgr.do_kmeans(vectorized_data)
+        logging.info("clustering complete..gathering output")
+
+        # merge cluster id of each document with its permalink id
+        out_list = list(zip(cluster_ids, [contents[0] for contents in contents_list]))
+        output_df = pandas.DataFrame.from_records(out_list, index=numpy.arange(len(out_list)))
+        output_df.columns = ['cluster_id', 'permalink']
+
+        if collate:
+            base_url = self.cfg_mgr.get('output', 'permalink.base.search.url')
+            num_clusters = self.cfg_mgr.get('clustering', 'clusters.count')
+            output_df = collate_(output_df, base_url, num_clusters)
+
+        export_dataframe(output_file, output_df, format=out_format, indices=[False])
+        logging.info("Processing complete. check output file for clustering results")
 
     def _process_with_dataframe(self, data_loader, output_file, out_format):
         """load data into pandas dataframe and use in-memory tf-idf vectorizer to process data"""
@@ -120,7 +137,10 @@ if __name__ == "__main__":
                         help="set this flag for files larger than 2 GB")
     parser.add_argument('--use-temp-files', action='store_true', default=False,
                         help='set this flag if processing should use pre-processed files stored in temporary directory')
+    parser.add_argument("--collate", action='store_true', default=False,
+                        help="set this flag if output file should contain collated cluster results")
     args = parser.parse_args()
 
     pm_handler = PubMed()
-    pm_handler.process(args.input_file, args.i, args.output_file, args.o, args.large_file, args.use_temp_files)
+    pm_handler.process(args.input_file, args.i, args.output_file, args.o, args.large_file, args.use_temp_files,
+                       args.collate)
