@@ -38,7 +38,8 @@ if __name__ == "__main__":
     cfg_mgr.add_config_entry('input', {'abstracts.parser.content.index': '4'})
     cfg_mgr.add_config_entry('input', {'abstracts.parser.permalink.index': '-2'})
     cfg_mgr.add_config_entry('input', {'abstracts.parser.title.index': '1'})
-    cfg_mgr.add_config_entry('input', {'temp.data.directory': "C:\\Users\\ramji\\Documents\\masters\\datasets\\pubmed\\temp\\"})
+    cfg_mgr.add_config_entry('input', {'temp.data.directory': "C:\\Users\\ramji\\Documents\\masters\\datasets"
+                                                              "\\pubmed\\temp\\"})
 
     cfg_mgr.add_config_entry('output', {'permalink.base.url': "https://www.ncbi.nlm.nih.gov/pubmed/"})
     cfg_mgr.add_config_entry('output', {'permalink.base.search.url': "https://www.ncbi.nlm.nih.gov/pubmed/?term="})
@@ -50,6 +51,7 @@ if __name__ == "__main__":
     cfg_mgr.add_config_entry('feature-extraction', {'document.frequency.min': '0.1'})
     cfg_mgr.add_config_entry('feature-extraction', {'document.frequency.max': '0.8'})
 
-    cfg_mgr.add_config_entry('general', {'logging.directory': "C:\\Users\\ramji\\Documents\\masters\\datasets\\pubmed\\log\\"})
+    cfg_mgr.add_config_entry('general', {'logging.directory': "C:\\Users\\ramji\\Documents\\masters\\datasets"
+                                                              "\\pubmed\\log\\"})
 
     cfg_mgr.save_config_file("default.cfg")

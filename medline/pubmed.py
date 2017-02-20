@@ -30,7 +30,7 @@ class PubMed:
     def _load_config(self):
         self.cfg_mgr.read(os.path.abspath(os.path.join(self.script_dir, "config", "default.cfg")))
 
-    def process(self, input_file, in_format, output_file, out_format, large_file):
+    def process(self, input_file, in_format, output_file, out_format, large_file, use_temp_files):
         """resembles a data processing pipeline.
             ->load input file into a pandas dataframe(for file size < 2 GB)
             ->transform data into Tf-Idf or Hashing vector
@@ -40,13 +40,14 @@ class PubMed:
             in_format: format of input file
             output_file: fully qualified name of output file(.xlsx) to be generated
             out_format: format of output file
-            large_file: flag to indicate if input file is larger than 2 GB"""
+            large_file: flag to indicate if input file is larger than 2 GB
+            use_temp_files: use temporary pre-processed files(if available) and skip laoding input file"""
 
         logging.info("Processing starts")
         # create appropriate loader object
         if in_format == "xml":
             if large_file:
-                data_loader = loader.AbstractsXmlSplitLoader(input_file, threshold=100000)
+                data_loader = loader.AbstractsXmlSplitLoader(input_file, use_temp_files=use_temp_files)
             else:
                 data_loader = loader.AbstractsXmlLoader(input_file)
         else:
@@ -65,9 +66,8 @@ class PubMed:
         # load and stream input data
         logging.info("saving input data into temporary files")
         total_docs, temp_data_files = data_loader.load_(as_="files")
-        print(temp_data_files)
         datastreamer_obj = data_streamer.DataStreamer(temp_data_files)
-
+        print(temp_data_files)
         # use Hashing vectorizer to transform data
         logging.info("transforming text - with Hashing vectorizer")
         vectorizer = features.FeatureExtractor(vectorizer_type='hashing')
@@ -111,14 +111,16 @@ class PubMed:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="cluster PubMed articles - abstracts or summaries",
                                      usage="pubmed input_file output_file -i input_format -o output_format "
-                                           "[--large-file]")
+                                           "[--large-file] [--use-temp-files]")
     parser.add_argument('input_file', help="fully qualified name of file containing PubMed articles")
     parser.add_argument('output_file', help="fully qualified name of clustering output file(.xslx) to be generated")
     parser.add_argument('-i', required=True, help="file format - xml or txt", choices=['xml', 'txt'])
     parser.add_argument('-o', required=True, help="file format - xlsx or csv", choices=['csv', 'xlsx'])
     parser.add_argument('--large-file', action='store_true', default=False,
                         help="set this flag for files larger than 2 GB")
+    parser.add_argument('--use-temp-files', action='store_true', default=False,
+                        help='set this flag if processing should use pre-processed files stored in temporary directory')
     args = parser.parse_args()
 
     pm_handler = PubMed()
-    pm_handler.process(args.input_file, args.i, args.output_file, args.o, args.large_file)
+    pm_handler.process(args.input_file, args.i, args.output_file, args.o, args.large_file, args.use_temp_files)

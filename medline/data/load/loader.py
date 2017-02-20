@@ -198,11 +198,13 @@ class AbstractsXmlLoader(Loader, ContentHandler):
 
 class AbstractsXmlSplitLoader(AbstractsXmlLoader):
     """parse PubMed input .xml file but pickle subsets of extracted data in a temporary folder.
-    extends AbstractsXmlLoader"""
+       parsing of input file can be skipped if pre-processed temporary files are available.
+       extends AbstractsXmlLoader"""
 
-    def __init__(self, filename, threshold=100000):
+    def __init__(self, filename, threshold=100000, use_temp_files=False):
         super(AbstractsXmlSplitLoader, self).__init__(filename)
 
+        self.use_temp_files = use_temp_files
         self.threshold = threshold
         self.num_docs_read = 0
         self.temp_filenames = []
@@ -228,28 +230,39 @@ class AbstractsXmlSplitLoader(AbstractsXmlLoader):
             self.num_docs_read += 1
 
     def load_(self, as_, limit=None):
-        """load input data file into a specified format.
+        """load input data file into a specified format. Skips loading input file if use_temp_files flag is set to True
+           and pre-processed temporary files are available
               Parameters:
                    as_: data structure to load data into. supports only "files"
-                  limit: # of data items to be loaded. default = None
+                   limit: # of data items to be loaded. default = None
         """
 
         # exit if as_ value is not 'files'
         if as_ != "files":
-            raise ValueError("invalid value for param as_. only 'files' is supported")
+            raise ValueError("invalid value for param as_. only 'files' is supported. For other purposes use "
+                             "AbstractXmlLoader class")
         else:
+            # check if use_temp_files flag is set
+            if self.use_temp_files:
+                # check if non-empty temp directory exists
+                if os.path.lexists(self.temp_files_dir) and len(os.listdir(self.temp_files_dir)) > 0:
+                    logging.info("non-empty temp directory found. returning temp files for processing")
+                    return 0, [self.temp_files_dir + file for file in os.listdir(self.temp_files_dir)]
+                else:
+                    logging.info("temp directory missing. ignoring use_temp_files flag and loading source file")
+
             # parse the input xml file
             parse(self._read_file(), self)
             logging.info("total docs processed: {0}".format(self.num_docs_processed))
             return self.num_docs_processed, self.temp_filenames
 
     def _check_and_save_temporary_file(self, eof=False):
-        """ check if # documents read is a multiple of threshold and if so, pickle data read so far and flush holding
+        """ check if # documents read is a multiple of 'threshold'; if so, pickle the data read so far and flush holding
         data structures"""
 
         if eof or self.data_index >= (self.filepart * self.threshold):
             # threshold reached - pickle in-memory data and flush data structures
-            print("# docs read: {0}".format(self.num_docs_read))
+            # print("# documents read: {0}".format(self.num_docs_read))
             logging.info("threshold reached. saving data to temporary file")
             full_filename = self.temp_files_dir + self.temp_file_basename + str(self.filepart)
             try:
