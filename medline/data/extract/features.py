@@ -21,6 +21,12 @@ class FeatureExtractor:
         self.config_handler = configparser.ConfigParser()
 
     def vectorize_text(self, text):
+        """perform feature extraction by converting data to a term-document matrix
+            input:
+                text: raw input data - list of documents
+            output:
+                vectorized_text: term-document matrix"""
+
         vectorized_text = self.vectorizer.fit_transform(text)
         if self.vectorizer_type == 'tfidf':
             self.vector_features = self.vectorizer.get_feature_names()
@@ -30,10 +36,16 @@ class FeatureExtractor:
         return self.vector_features
 
     def _get_vectorizer(self, type):
+        """instantiate a vectorizer - tf-idf or hashing
+            input:
+                type: type of vectorizer to use - either tfidf or hashing
+            output:
+                object: instantiated vectorizer object"""
+
         if type == 'tfidf':
             return TfidfVectorizer(stop_words='english', analyzer='word')
         elif type == 'hashing':
-            return make_pipeline(HashingVectorizer(input='content', stop_words='english', analyzer='word'),
+            return make_pipeline(HashingVectorizer(input='file', stop_words='english', analyzer='word'),
                                  TfidfTransformer())
         else:
             raise ValueError("unsupported vectorizer type. value must be one of tfidf, hashing")

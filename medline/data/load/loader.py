@@ -170,7 +170,7 @@ class AbstractsXmlLoader(Loader, ContentHandler):
             elif name == "Abstract":
                 self.data_dict[self.data_index]['content'] = self._get_content()
             elif name == "PMID":
-                self.data_dict[self.data_index]['permalink'] = self.pmid_base_url + self._get_content()
+                self.data_dict[self.data_index]['permalink'] = self._get_content() #self.pmid_base_url + self._get_content()
             elif name == "DateCreated":
                 pass
             else:
@@ -197,7 +197,7 @@ class AbstractsXmlSplitLoader(AbstractsXmlLoader):
        parsing of input file can be skipped if pre-processed temporary files are available.
        extends AbstractsXmlLoader"""
 
-    def __init__(self, filename, threshold=100000, use_temp_files=False):
+    def __init__(self, filename, threshold=100000, use_temp_files=False, num_docs=0):
         super(AbstractsXmlSplitLoader, self).__init__(filename)
 
         self.use_temp_files = use_temp_files
@@ -207,7 +207,7 @@ class AbstractsXmlSplitLoader(AbstractsXmlLoader):
         self.temp_files_dir = self.cfg_mgr.get('input', 'temp.data.directory')
         self.temp_file_basename = "filepart."
         self.filepart = 1
-        self.num_docs_processed = 0
+        self.num_docs_processed = num_docs
 
     def endDocument(self):
         logging.info("XML file parsing complete")
@@ -243,7 +243,7 @@ class AbstractsXmlSplitLoader(AbstractsXmlLoader):
                 # check if non-empty temp directory exists
                 if os.path.lexists(self.temp_files_dir) and len(os.listdir(self.temp_files_dir)) > 0:
                     logging.info("non-empty temp directory found. returning temp files for processing")
-                    return 0, [self.temp_files_dir + file for file in os.listdir(self.temp_files_dir)]
+                    return self.num_docs_processed, [self.temp_files_dir + file for file in os.listdir(self.temp_files_dir)]
                 else:
                     logging.info("temp directory missing. ignoring use_temp_files flag and loading source file")
 

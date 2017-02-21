@@ -31,7 +31,7 @@ class PubMed:
     def _load_config(self):
         self.cfg_mgr.read(os.path.abspath(os.path.join(self.script_dir, "config", "default.cfg")))
 
-    def process(self, input_file, in_format, output_file, out_format, large_file, use_temp_files, collate):
+    def process(self, input_file, in_format, output_file, out_format, large_file, use_temp_files, num_docs, collate):
         """resembles a data processing pipeline.
             ->load input file into a pandas dataframe(for file size < 2 GB)
             ->transform data into Tf-Idf or Hashing vector
@@ -48,7 +48,9 @@ class PubMed:
         # create appropriate loader object
         if in_format == "xml":
             if large_file:
-                data_loader = loader.AbstractsXmlSplitLoader(input_file, use_temp_files=use_temp_files)
+                if use_temp_files and num_docs == 0:
+                    raise ValueError("param num_docs must be a non-zero value when use_temp_files flag is set to True")
+                data_loader = loader.AbstractsXmlSplitLoader(input_file, use_temp_files=use_temp_files, num_docs=num_docs)
             else:
                 data_loader = loader.AbstractsXmlLoader(input_file)
         else:
@@ -68,22 +70,20 @@ class PubMed:
         logging.info("large file detected..saving input data in temporary files")
         total_docs, temp_data_files = data_loader.load_(as_="files")
         datastreamer_obj = data_streamer.DataStreamer(temp_data_files)
-        print(temp_data_files)
 
         # use Hashing vectorizer to transform data
         logging.info("transforming text - with Hashing vectorizer")
-        contents_list = [(pmid, body) for pmid, body in datastreamer_obj.read()]
         vectorizer = features.FeatureExtractor(vectorizer_type='hashing')
-        vectorized_data = vectorizer.vectorize_text([contents[1] for contents in contents_list])
+        vectorized_data = vectorizer.vectorize_text([datastreamer_obj]*total_docs)
 
         # cluster transformed data
         logging.info("clustering begins")
         cluster_mgr = cluster.Cluster()
-        cluster_ids = cluster_mgr.do_kmeans(vectorized_data)
+        cluster_ids = cluster_mgr.do_minibatch_kmeans(vectorized_data)
         logging.info("clustering complete..gathering output")
 
         # merge cluster id of each document with its permalink id
-        out_list = list(zip(cluster_ids, [contents[0] for contents in contents_list]))
+        out_list = list(zip(cluster_ids, [pmid for pmid in datastreamer_obj.doc_id_list]))
         output_df = pandas.DataFrame.from_records(out_list, index=numpy.arange(len(out_list)))
         output_df.columns = ['cluster_id', 'permalink']
 
@@ -128,11 +128,13 @@ class PubMed:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="cluster PubMed articles - abstracts or summaries",
                                      usage="pubmed input_file output_file -i input_format -o output_format "
-                                           "[--large-file] [--use-temp-files]")
+                                           "[--num-docs #] [--large-file] [--use-temp-files]")
     parser.add_argument('input_file', help="fully qualified name of file containing PubMed articles")
     parser.add_argument('output_file', help="fully qualified name of clustering output file(.xslx) to be generated")
     parser.add_argument('-i', required=True, help="file format - xml or txt", choices=['xml', 'txt'])
     parser.add_argument('-o', required=True, help="file format - xlsx or csv", choices=['csv', 'xlsx'])
+    parser.add_argument('--num-docs', default=0, help="# of documents in input file. required if --use-temp-files flag "
+                                                      "is set or clustering should be restricted to subset of input")
     parser.add_argument('--large-file', action='store_true', default=False,
                         help="set this flag for files larger than 2 GB")
     parser.add_argument('--use-temp-files', action='store_true', default=False,
@@ -143,4 +145,4 @@ if __name__ == "__main__":
 
     pm_handler = PubMed()
     pm_handler.process(args.input_file, args.i, args.output_file, args.o, args.large_file, args.use_temp_files,
-                       args.collate)
+                       int(args.num_docs), args.collate)
