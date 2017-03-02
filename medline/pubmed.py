@@ -61,7 +61,7 @@ class PubMed:
             self._process_large_file(data_loader, output_file, out_format, collate)
         else:
             # smaller datasets can be processed using pandas dataframe and any in-memory vectorizer
-            self._process_with_dataframe(data_loader, output_file, out_format)
+            self._process_with_dataframe(data_loader, output_file, out_format, collate)
 
     def _process_large_file(self, data_loader, output_file, out_format, collate):
         """stream data from temporary files to a hashing vectorizer to reduce memory overload"""
@@ -95,7 +95,7 @@ class PubMed:
         export_dataframe(output_file, output_df, format=out_format, indices=[False])
         logging.info("Processing complete. check output file for clustering results")
 
-    def _process_with_dataframe(self, data_loader, output_file, out_format):
+    def _process_with_dataframe(self, data_loader, output_file, out_format, collate):
         """load data into pandas dataframe and use in-memory tf-idf vectorizer to process data"""
 
         # load input file into a pandas dataframe
@@ -113,16 +113,23 @@ class PubMed:
         logging.info("clustering begins")
         cluster_mgr = cluster.Cluster()
         cluster_ids = cluster_mgr.do_kmeans(vectorized_data)
+        logging.info("clustering complete..gathering output")
 
         # extract clustering output
         output_df = pandas.DataFrame(cluster_ids, index=input_dataframe.index)
         output_df = output_df.join(input_dataframe['permalink'])
         output_df.columns = ['cluster_id', 'permalink']
 
+        if collate:
+            base_url = self.cfg_mgr.get('output', 'permalink.base.search.url')
+            num_clusters = self.cfg_mgr.get('clustering', 'clusters.count')
+            output_df = collate_(output_df, base_url, num_clusters)
+
         cluster_kw_df = pandas.DataFrame(cluster_mgr.get_top_cluster_terms(vectorizer.get_features(), num_terms=20),
                                          columns=['top cluster keywords'])
         export_dataframe(output_file, output_df, cluster_kw_df, format=out_format,
                          sheet_names=['clusters', 'cluster keywords'], indices=[False, False])
+        logging.info("Processing complete. check output file for clustering results")
 
 
 if __name__ == "__main__":

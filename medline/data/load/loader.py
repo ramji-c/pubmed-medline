@@ -154,7 +154,7 @@ class AbstractsXmlLoader(Loader, ContentHandler):
 
     # SAX parser callback functions section
     def endDocument(self):
-        logging.info("XML file parsing complete")
+        logging.info("XML file parsing complete. read {0} documents".format(self.data_index-1))
 
     def startDocument(self):
         logging.info("Begin XML file parsing")
@@ -162,15 +162,20 @@ class AbstractsXmlLoader(Loader, ContentHandler):
     def endElement(self, name):
         try:
             if name == "PubmedArticle":
+                # if the 'content' is missing, make 'title' of the document its 'content'. delete the document if both
+                # title and content are missing
                 if 'content' not in self.data_dict[self.data_index] or \
                                 'permalink' not in self.data_dict[self.data_index]:
-                    del self.data_dict[self.data_index]
+                    try:
+                        self.data_dict[self.data_index]['content'] = self.data_dict[self.data_index]['title']
+                    except KeyError:
+                        del self.data_dict[self.data_index]
             elif name == "ArticleTitle":
                 self.data_dict[self.data_index]['title'] = self._get_content()
             elif name == "Abstract":
                 self.data_dict[self.data_index]['content'] = self._get_content()
             elif name == "PMID":
-                self.data_dict[self.data_index]['permalink'] = self._get_content() #self.pmid_base_url + self._get_content()
+                self.data_dict[self.data_index]['permalink'] = self._get_content()
             elif name == "DateCreated":
                 pass
             else:
@@ -258,7 +263,6 @@ class AbstractsXmlSplitLoader(AbstractsXmlLoader):
 
         if eof or self.data_index >= (self.filepart * self.threshold):
             # threshold reached - pickle in-memory data and flush data structures
-            # print("# documents read: {0}".format(self.num_docs_read))
             logging.info("threshold reached. saving data to temporary file")
             full_filename = self.temp_files_dir + self.temp_file_basename + str(self.filepart)
             try:
