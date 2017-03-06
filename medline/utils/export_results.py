@@ -7,10 +7,11 @@ import pandas
 
 def export_dataframe(filename, *dataframes, **fileparams):
     """helper function to export multiple pandas dataframes to a .xlsx or .csv file.
+
     Parameters:
-        filename: name of the .xlsx or .csv file to be saved
-        *dataframes: 1 or more pandas dataframe
-        **fileparams: dictionary of params as follows
+        :parameter filename: name of the .xlsx or .csv file to be saved
+        :parameter *dataframes: 1 or more pandas dataframe
+        :parameter **fileparams: dictionary of params as follows
             format: output file format. default: xlsx
             sheetnames: list of 1 or more sheet name corresponding to each dataframe
             indices: list of 1 or more boolean values that indicate if index of corresponding dataframe should be

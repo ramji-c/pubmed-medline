@@ -61,7 +61,7 @@ class PubMed:
             self._process_large_file(data_loader, output_file, out_format, collate)
         else:
             # smaller datasets can be processed using pandas dataframe and any in-memory vectorizer
-            self._process_with_dataframe(data_loader, output_file, out_format, collate)
+            self._process_normal_file(data_loader, output_file, out_format, collate)
 
     def _process_large_file(self, data_loader, output_file, out_format, collate):
         """stream data from temporary files to a hashing vectorizer to reduce memory overload"""
@@ -95,7 +95,7 @@ class PubMed:
         export_dataframe(output_file, output_df, format=out_format, indices=[False])
         logging.info("Processing complete. check output file for clustering results")
 
-    def _process_with_dataframe(self, data_loader, output_file, out_format, collate):
+    def _process_normal_file(self, data_loader, output_file, out_format, collate):
         """load data into pandas dataframe and use in-memory tf-idf vectorizer to process data"""
 
         # load input file into a pandas dataframe
