@@ -15,16 +15,17 @@ class FeatureExtractor:
 
     def __init__(self, vectorizer_type='tfidf'):
         self.stemmer = SnowballStemmer('english')
-        self.vectorizer = self._get_vectorizer(vectorizer_type)
-        self.vectorizer_type = vectorizer_type
-        self.vector_features = []
-        self.lda_model = None
         self.cfg_mgr = configparser.ConfigParser()
         self.script_dir = os.path.dirname(__file__)
         self._load_config()
 
+        self.vectorizer = self._get_vectorizer(vectorizer_type)
+        self.vectorizer_type = vectorizer_type
+        self.vector_features = []
+        self.lda_model = None
+
     def _load_config(self):
-        self.cfg_mgr.read(os.path.abspath(os.path.join(self.script_dir, "..", "config", "default.cfg")))
+        self.cfg_mgr.read(os.path.abspath(os.path.join(self.script_dir, "../..", "config", "default.cfg")))
 
     def vectorize_text(self, text):
         """perform feature extraction by converting data to a term-document matrix
@@ -52,8 +53,8 @@ class FeatureExtractor:
                 object: instantiated vectorizer object"""
 
         # config parameters
-        MIN_DF = int(self.cfg_mgr.get('feature-extraction', 'document.frequency.min'))
-        MAX_DF = int(self.cfg_mgr.get('feature-extraction', 'document.frequency.max'))
+        MIN_DF = float(self.cfg_mgr.get('feature-extraction', 'document.frequency.min'))
+        MAX_DF = float(self.cfg_mgr.get('feature-extraction', 'document.frequency.max'))
 
         if type == 'tfidf':
             return TfidfVectorizer(stop_words='english', analyzer='word', min_df=MIN_DF, max_df=MAX_DF)

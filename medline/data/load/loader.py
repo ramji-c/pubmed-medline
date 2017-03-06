@@ -25,10 +25,14 @@ class Loader(object):
                                                        "default.cfg")))
 
     def _validate_file(self, filename):
-        """validates input file format and type
-        Parameters:
-            filename: fully qualified path of input file"""
+        """validates input file format and type. skips validation if filename is NA
 
+        input:
+            :parameter filename: fully qualified path of input file"""
+
+        # skip validation; input file not used for processing
+        if filename == "NA":
+            return
         supported_formats = tuple(self.cfg_mgr.get('input', 'input.file.type').split(","))
         if os.path.isdir(filename):
             raise ValueError("filename is a directory. expected: a file")
@@ -250,7 +254,10 @@ class AbstractsXmlSplitLoader(AbstractsXmlLoader):
                     logging.info("non-empty temp directory found. returning temp files for processing")
                     return self.num_docs_processed, [self.temp_files_dir + file for file in os.listdir(self.temp_files_dir)]
                 else:
-                    logging.info("temp directory missing. ignoring use_temp_files flag and loading source file")
+                    if self.filename == "NA":
+                        logging.error("temp directory missing & input file is set to NA. processing aborted")
+                    else:
+                        logging.info("temp directory missing. ignoring use_temp_files flag and loading source file")
 
             # parse the input xml file
             parse(self._read_file(), self)
