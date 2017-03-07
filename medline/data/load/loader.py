@@ -112,7 +112,6 @@ class AbstractsXmlLoader(Loader, ContentHandler):
 
     def __init__(self, filename, parser=input_parser.DefaultParser()):
         super(AbstractsXmlLoader, self).__init__()
-        logging.basicConfig(format='%(asctime)s::%(levelname)s::%(message)s', level=logging.INFO)
         self.filename = filename
         self.cfg_mgr = configparser.ConfigParser()
         self.script_dir = os.path.dirname(__file__)
@@ -127,6 +126,8 @@ class AbstractsXmlLoader(Loader, ContentHandler):
         self._validate_file(self.filename)
 
         # extract config params
+        log_file = self.cfg_mgr.get('logging', 'logging.directory') + self.cfg_mgr.get('logging', 'log.filename')
+        logging.basicConfig(format='%(asctime)s::%(levelname)s::%(message)s', level=logging.INFO, filename=log_file)
         self.pmid_base_url = self.cfg_mgr.get('output', 'permalink.base.url')
 
     def _read_file(self):

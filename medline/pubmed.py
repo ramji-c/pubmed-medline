@@ -23,10 +23,12 @@ class PubMed:
     cluster keywords/terms for each cluster"""
 
     def __init__(self):
-        logging.basicConfig(format='%(asctime)s::%(levelname)s::%(message)s', level=logging.INFO)
         self.cfg_mgr = configparser.ConfigParser()
         self.script_dir = os.path.dirname(__file__)
         self._load_config()
+
+        log_file = self.cfg_mgr.get('logging', 'logging.directory') + self.cfg_mgr.get('logging', 'log.filename')
+        logging.basicConfig(format='%(asctime)s::%(levelname)s::%(message)s', level=logging.INFO, filename=log_file)
 
     def _load_config(self):
         self.cfg_mgr.read(os.path.abspath(os.path.join(self.script_dir, "config", "default.cfg")))

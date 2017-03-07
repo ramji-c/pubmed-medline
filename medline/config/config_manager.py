@@ -29,7 +29,7 @@ class ConfigMgr:
 if __name__ == "__main__":
 
     cfg_mgr = ConfigMgr()
-    cfg_mgr.create_sections(['input', 'clustering', 'feature-extraction', 'output', 'general'])
+    cfg_mgr.create_sections(['input', 'clustering', 'feature-extraction', 'output', 'logging'])
 
     cfg_mgr.add_config_entry('input', {'input.file.type': '.txt,.xml'})
     cfg_mgr.add_config_entry('input', {'input.filters': 'none'})
@@ -52,7 +52,8 @@ if __name__ == "__main__":
     cfg_mgr.add_config_entry('feature-extraction', {'document.frequency.min': '0.1'})
     cfg_mgr.add_config_entry('feature-extraction', {'document.frequency.max': '0.8'})
 
-    cfg_mgr.add_config_entry('general', {'logging.directory': "C:\\Users\\ramji\\Documents\\masters\\datasets"
+    cfg_mgr.add_config_entry('logging', {'logging.directory': "C:\\Users\\ramji\\Documents\\masters\\datasets"
                                                               "\\pubmed\\log\\"})
+    cfg_mgr.add_config_entry('logging', {'log.filename': "pubmed_clustering.log"})
 
     cfg_mgr.save_config_file("default.cfg")
