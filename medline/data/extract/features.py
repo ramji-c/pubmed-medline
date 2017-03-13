@@ -33,7 +33,8 @@ class FeatureExtractor:
             input:
                 :parameter text: raw input data - list of documents
             output:
-                vectorized_text: term-document matrix"""
+                :return vectorized_text: term-document matrix
+                :rtype numpy.NDarray"""
 
         vectorized_text = self.vectorizer.fit_transform(text)
         if self.vectorizer_type == 'tfidf':
@@ -50,7 +51,7 @@ class FeatureExtractor:
             input:
                 :parameter type: type of vectorizer to use - either tfidf or hashing
             output:
-                object: instantiated vectorizer object"""
+                :return instantiated vectorizer object"""
 
         # config parameters
         MIN_DF = float(self.cfg_mgr.get('feature-extraction', 'document.frequency.min'))

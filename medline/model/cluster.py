@@ -36,9 +36,10 @@ class Cluster:
     def do_kmeans(self, dataset):
         """vanilla k-means - Llyod's algorithm.
             input:
-                dataset: input data in the form of a term document matrix
+                :parameter dataset: input data in the form of a term document matrix
             output:
-                labels_; a list of cluster identifiers - 1 per input document"""
+                :returns labels_: a list of cluster identifiers - 1 per input document
+                :rtype list"""
 
         # normalization
         self.svd = TruncatedSVD(self.NCLUSTERS)
@@ -52,7 +53,12 @@ class Cluster:
         return self.model.labels_
 
     def do_minibatch_kmeans(self, dataset):
-        """scalable version of k-means. used for large datasets. same input/output as k-means function"""
+        """scalable version of k-means. used for large datasets. same input/output as k-means function
+            input:
+                :parameter dataset: input data in the form of a term document matrix
+            output:
+                :returns labels_: a list of cluster identifiers - 1 per input document
+                :rtype list"""
 
         self.model = MiniBatchKMeans(n_clusters=self.NCLUSTERS, n_init=self.NINIT, batch_size=self.BATCH_SIZE,
                                      max_iter=self.NITER, verbose=True)
@@ -60,7 +66,10 @@ class Cluster:
         return self.model.labels_
 
     def print_top_terms(self, features, model='kmeans'):
-        """print top 'n' features(cluster centers) of each cluster"""
+        """print top 'n' features(cluster centers) of each cluster
+            Inputs:
+                :parameter features: list of features returned by the vectorizer
+                :parameter model: name of the model. default - kmeans"""
 
         if model == 'kmeans':
             for ind, term in enumerate(self.get_top_cluster_terms(features, model='kmeans')):
@@ -70,7 +79,14 @@ class Cluster:
                 print("Topic #: {0}   Top terms: {1}".format(ind, term))
 
     def get_top_cluster_terms(self, features, model='kmeans', num_terms=15):
-        """get top 'n' cluster features"""
+        """get top 'n' cluster features that constitute cluster centroids
+            Inputs:
+                :parameter features: list of features returned by the vectorizer
+                :parameter model: name of the model. default - kmeans
+                :parameter num_terms: # of terms to return. default - 15
+            Output:
+                :returns cluster centroids
+                :rtype list"""
 
         top_terms = []
         if model == 'kmeans':
@@ -86,9 +102,10 @@ class Cluster:
     def do_lda(self, dataset):
         """Latent Dirichlet Allocation
             input:
-                dataset: input data in the form of a term-document matrix
+                :parameter dataset: input data in the form of a term-document matrix
             output:
-                components_: list of topic labels for each topic"""
+                :return components_: list of topic labels for each topic
+                :rtype list"""
 
         self.model = LatentDirichletAllocation(n_topics=self.NTOPICS, max_iter=self.NITER)
         self.model.fit(dataset)

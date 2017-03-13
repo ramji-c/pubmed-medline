@@ -44,7 +44,11 @@ class PubMed:
             output_file: fully qualified name of output file(.xlsx) to be generated
             out_format: format of output file
             large_file: flag to indicate if input file is larger than 2 GB
-            use_temp_files: use temporary pre-processed files(if available) and skip laoding input file"""
+            use_temp_files: use temporary pre-processed files(if available) and skip loading input file
+            num_docs: number of documents to be clustered
+            collate: flag to indicate if output should be collated into 1 record per cluster
+
+        :rtype None"""
 
         logging.info("Processing begins..initializing appropriate loader class")
         # create appropriate loader object
@@ -52,7 +56,8 @@ class PubMed:
             if large_file:
                 if use_temp_files and num_docs == 0:
                     raise ValueError("param num_docs must be a non-zero value when use_temp_files flag is set to True")
-                data_loader = loader.AbstractsXmlSplitLoader(input_file, use_temp_files=use_temp_files, num_docs=num_docs)
+                data_loader = loader.AbstractsXmlSplitLoader(input_file, use_temp_files=use_temp_files,
+                                                             num_docs=num_docs)
             else:
                 data_loader = loader.AbstractsXmlLoader(input_file)
         else:
@@ -66,7 +71,13 @@ class PubMed:
             self._process_normal_file(data_loader, output_file, out_format, collate)
 
     def _process_large_file(self, data_loader, output_file, out_format, collate):
-        """stream data from temporary files to a hashing vectorizer to reduce memory overload"""
+        """stream data from temporary files to a hashing vectorizer to reduce memory overload
+            Input:
+                :parameter data_loader: loader object
+                :parameter output_file: fully qualified path of output file
+                :parameter collate: flag to collate results
+
+            :rtype None"""
 
         # load and stream input data
         logging.info("large file detected..saving input data in temporary files")
@@ -98,7 +109,13 @@ class PubMed:
         logging.info("Processing complete. check output file for clustering results")
 
     def _process_normal_file(self, data_loader, output_file, out_format, collate):
-        """load data into pandas dataframe and use in-memory tf-idf vectorizer to process data"""
+        """load data into pandas dataframe and use in-memory tf-idf vectorizer to process data
+            Input:
+                :parameter data_loader: loader object
+                :parameter output_file: fully qualified path of output file
+                :parameter collate: flag to collate results
+
+            :rtype None"""
 
         # load input file into a pandas dataframe
         input_dataframe = data_loader.load_(as_="dataframe")

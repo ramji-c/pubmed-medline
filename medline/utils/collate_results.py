@@ -8,10 +8,13 @@ import urllib
 
 def collate_(input_df, base_url, num_clusters):
     """collate documents per cluster and return a dataframe with 1 row per cluster
-       Parameters:
-           :parameter input_df: dataframe containing uncollated cluster output
-           :parameter base_url: NCBI search URL
-           :parameter num_clusters: # of clusters"""
+        Input:
+            :parameter input_df: dataframe containing uncollated cluster output
+            :parameter base_url: NCBI search URL
+            :parameter num_clusters: # of clusters
+        Output:
+            :returns pandas Dataframe
+            :rtype pandas.Dataframe"""
 
     cluster_urls = []
     for cluster_id in range(int(num_clusters)):

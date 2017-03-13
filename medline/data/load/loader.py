@@ -70,7 +70,8 @@ class AbstractsTextLoader(Loader):
         Parameters:
             as_: data structure to load data into. default = dataframe
             limit: # of data items to be loaded. default = 100
-        """
+
+        :rtype pandas.Dataframe"""
         data_dict = {}
         data_index = 0
         for data in self.__collate_data():
@@ -138,7 +139,9 @@ class AbstractsXmlLoader(Loader, ContentHandler):
            Parameters:
                 as_: data structure to load data into.
                limit: # of data items to be loaded. default = None
-        """
+
+            :rtype pandas.Dataframe
+            :rtype dict"""
 
         # parse the input xml file
         parse(self._read_file(), self)
@@ -238,10 +241,11 @@ class AbstractsXmlSplitLoader(AbstractsXmlLoader):
     def load_(self, as_, limit=None):
         """load input data file into a specified format. Skips loading input file if use_temp_files flag is set to True
            and pre-processed temporary files are available
-              Parameters:
+                Parameters:
                    as_: data structure to load data into. supports only "files"
                    limit: # of data items to be loaded. default = None
-        """
+                :return tuple of <# items loaded, list of items)
+                :rtype tuple"""
 
         # exit if as_ value is not 'files'
         if as_ != "files":
