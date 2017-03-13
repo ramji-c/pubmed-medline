@@ -1,4 +1,4 @@
-# author; Ramji Chandrasekaran
+# author: Ramji Chandrasekaran
 # date: 06-Feb-2017
 # top level script to initiate PubMed data processing
 

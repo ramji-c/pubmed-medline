@@ -1,4 +1,4 @@
-# author; Ramji Chandrasekaran
+# author: Ramji Chandrasekaran
 # date: 16-Feb-2017
 # stream data from temporary files
 

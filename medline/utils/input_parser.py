@@ -1,4 +1,4 @@
-# author; Ramji Chandrasekaran
+# author: Ramji Chandrasekaran
 # date: 05-Feb-2017
 # input data parser
 

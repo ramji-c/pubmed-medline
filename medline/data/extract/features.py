@@ -1,4 +1,4 @@
-# author; Ramji Chandrasekaran
+# author: Ramji Chandrasekaran
 # date: 06-Feb-2017
 # feature extraction from input data
 
