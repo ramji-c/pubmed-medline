@@ -161,6 +161,7 @@ if __name__ == "__main__":
     parser.add_argument('-o', required=True, help="file format - xlsx or csv", choices=['csv', 'xlsx'])
     parser.add_argument('--num-docs', default=0, help="# of documents in input file. required if --use-temp-files flag "
                                                       "is set or clustering should be restricted to subset of input")
+    parser.add_argument('--config-file', help="fully qualified name of config file with cluster parameters")
     parser.add_argument('--large-file', action='store_true', default=False,
                         help="set this flag for files larger than 2 GB")
     parser.add_argument('--use-temp-files', action='store_true', default=False,

@@ -257,7 +257,8 @@ class AbstractsXmlSplitLoader(AbstractsXmlLoader):
                 # check if non-empty temp directory exists
                 if os.path.lexists(self.temp_files_dir) and len(os.listdir(self.temp_files_dir)) > 0:
                     logging.info("non-empty temp directory found. returning temp files for processing")
-                    return self.num_docs_processed, [self.temp_files_dir + file for file in os.listdir(self.temp_files_dir)]
+                    return self.num_docs_processed, [self.temp_files_dir + file for file in
+                                                     os.listdir(self.temp_files_dir)]
                 else:
                     if self.filename == "NA":
                         logging.error("temp directory missing & input file is set to NA. processing aborted")

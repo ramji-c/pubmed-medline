@@ -51,6 +51,8 @@ if __name__ == "__main__":
 
     cfg_mgr.add_config_entry('feature-extraction', {'document.frequency.min': '0.1'})
     cfg_mgr.add_config_entry('feature-extraction', {'document.frequency.max': '0.8'})
+    cfg_mgr.add_config_entry('feature-extraction', {'vectorizer': 'tfidf'})
+    cfg_mgr.add_config_entry('feature-extraction', {'vectorizer.input.type': 'file'})
 
     cfg_mgr.add_config_entry('logging', {'logging.directory': "C:\\Users\\ramji\\Documents\\masters\\datasets"
                                                               "\\pubmed\\log\\"})
