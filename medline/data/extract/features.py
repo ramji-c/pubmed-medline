@@ -5,27 +5,43 @@
 from sklearn.feature_extraction.text import TfidfVectorizer, HashingVectorizer, TfidfTransformer
 from sklearn.pipeline import make_pipeline
 from nltk.stem import SnowballStemmer
-import configparser
-import os
 
 
 class FeatureExtractor:
     """extract features from input data - typically by vectorizing the data using Tf-Idf or Hashing vectorizers
     tuning parameters for feature extraction can be specified in default.cfg file under 'feature-extraction' section"""
 
-    def __init__(self, vectorizer_type='tfidf'):
+    def __init__(self, config, vectorizer_type='tfidf'):
         self.stemmer = SnowballStemmer('english')
-        self.cfg_mgr = configparser.ConfigParser()
-        self.script_dir = os.path.dirname(__file__)
-        self._load_config()
-
-        self.vectorizer = self._get_vectorizer(vectorizer_type)
+        self.config = config
+        self._vectorizer = None
         self.vectorizer_type = vectorizer_type
         self.vector_features = []
         self.lda_model = None
 
-    def _load_config(self):
-        self.cfg_mgr.read(os.path.abspath(os.path.join(self.script_dir, "../..", "config", "default.cfg")))
+    @property
+    def vectorizer(self):
+        return self._vectorizer
+
+    @vectorizer.setter
+    def vectorizer(self, vec_type):
+        """instantiate a vectorizer: tf-idf or hashing
+
+            for large input files, a Hashing vectorizer could be used if there are memory limitations
+            input:
+                :parameter vec_type: type of vectorizer to use - either tfidf or hashing
+            output:
+                :return None
+                :raises ValueError"""
+
+        if vec_type == 'tfidf':
+            self._vectorizer = TfidfVectorizer(input=self.config.VECTORIZER_INPUT, stop_words='english', analyzer='word',
+                                               min_df=self.config.MINDF, max_df=self.config.MAXDF)
+        elif vec_type == 'hashing':
+            self._vectorizer = make_pipeline(HashingVectorizer(input=self.config.VECTORIZER_INPUT, stop_words='english',
+                                                               analyzer='word'), TfidfTransformer())
+        else:
+            raise ValueError("unsupported vectorizer type. value must be one of tfidf, hashing")
 
     def vectorize_text(self, text):
         """perform feature extraction by converting data to a term-document matrix
@@ -43,24 +59,3 @@ class FeatureExtractor:
 
     def get_features(self):
         return self.vector_features
-
-    def _get_vectorizer(self, type):
-        """instantiate a vectorizer: tf-idf or hashing
-
-            for large input files, a Hashing vectorizer could be used if there are memory limitations
-            input:
-                :parameter type: type of vectorizer to use - either tfidf or hashing
-            output:
-                :return instantiated vectorizer object"""
-
-        # config parameters
-        MIN_DF = float(self.cfg_mgr.get('feature-extraction', 'document.frequency.min'))
-        MAX_DF = float(self.cfg_mgr.get('feature-extraction', 'document.frequency.max'))
-
-        if type == 'tfidf':
-            return TfidfVectorizer(stop_words='english', analyzer='word', min_df=MIN_DF, max_df=MAX_DF)
-        elif type == 'hashing':
-            return make_pipeline(HashingVectorizer(input='file', stop_words='english', analyzer='word'),
-                                 TfidfTransformer())
-        else:
-            raise ValueError("unsupported vectorizer type. value must be one of tfidf, hashing")

@@ -7,8 +7,6 @@ from sklearn.decomposition import TruncatedSVD
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import Normalizer
 from sklearn.decomposition import LatentDirichletAllocation
-import configparser
-import os
 
 
 class Cluster:
@@ -16,22 +14,10 @@ class Cluster:
     """cluster input data using K-means, Minibatch-Kmeans or LDA. Input to clustering algorithms must be either
     a Tf-Idf vector or a hashing vector. tuning parameters can be configured in default.cfg file."""
 
-    def __init__(self):
-        self.cfg_mgr = configparser.ConfigParser()
-        self.script_dir = os.path.dirname(__file__)
-        self._load_config()
-        # cluster config parameters
-        self.NCLUSTERS = int(self.cfg_mgr.get('clustering', 'clusters.count'))
-        self.NINIT = int(self.cfg_mgr.get('clustering', 'init.count'))
-        self.NITER = int(self.cfg_mgr.get('clustering', 'iterations.count'))
-        self.BATCH_SIZE = int(self.cfg_mgr.get('clustering', 'kmeans.batch.size'))
-        self.NTOPICS = 10
-
+    def __init__(self, config):
+        self.config = config
         self.model = None
         self.svd = None
-
-    def _load_config(self):
-        self.cfg_mgr.read(os.path.abspath(os.path.join(self.script_dir, "..", "config", "default.cfg")))
 
     def do_kmeans(self, dataset):
         """vanilla k-means - Llyod's algorithm.
@@ -42,13 +28,13 @@ class Cluster:
                 :rtype list"""
 
         # normalization
-        self.svd = TruncatedSVD(self.NCLUSTERS)
+        self.svd = TruncatedSVD(self.config.NCLUSTERS)
         normalizer = Normalizer(copy=False)
         lsa = make_pipeline(self.svd, normalizer)
         dataset = lsa.fit_transform(dataset)
 
         # finish normalization,start k-means
-        self.model = KMeans(n_clusters=self.NCLUSTERS, n_init=self.NINIT)
+        self.model = KMeans(n_clusters=self.config.NCLUSTERS, n_init=self.config.NINIT)
         self.model.fit_transform(dataset)
         return self.model.labels_
 
@@ -60,8 +46,8 @@ class Cluster:
                 :returns labels_: a list of cluster identifiers - 1 per input document
                 :rtype list"""
 
-        self.model = MiniBatchKMeans(n_clusters=self.NCLUSTERS, n_init=self.NINIT, batch_size=self.BATCH_SIZE,
-                                     max_iter=self.NITER, verbose=True)
+        self.model = MiniBatchKMeans(n_clusters=self.config.NCLUSTERS, n_init=self.config.NINIT,
+                                     batch_size=self.config.BATCHSIZE, max_iter=self.config.NITER, verbose=self.config)
         self.model.fit_transform(dataset)
         return self.model.labels_
 
@@ -92,7 +78,7 @@ class Cluster:
         if model == 'kmeans':
             original_space_centroids = self.svd.inverse_transform(self.model.cluster_centers_)
             order_centroids = original_space_centroids.argsort()[:, ::-1]
-            for cluster_num in range(self.NCLUSTERS):
+            for cluster_num in range(self.config.NCLUSTERS):
                 top_terms.append(", ".join([features[i] for i in order_centroids[cluster_num, :num_terms]]))
         elif model == 'lda':
             for topic in self.model.components_:
@@ -107,6 +93,6 @@ class Cluster:
                 :return components_: list of topic labels for each topic
                 :rtype list"""
 
-        self.model = LatentDirichletAllocation(n_topics=self.NTOPICS, max_iter=self.NITER)
+        self.model = LatentDirichletAllocation(n_topics=self.config.NTOPICS, max_iter=self.config.NITER)
         self.model.fit(dataset)
         return self.model.components_

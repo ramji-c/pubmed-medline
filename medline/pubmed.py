@@ -8,10 +8,10 @@ from medline.model import cluster
 from medline.utils import input_parser, data_streamer
 from medline.utils.export_results import export_dataframe
 from medline.utils.collate_results import collate_
+from medline.utils.configuration import Config
 
 import pandas
 import argparse
-import configparser
 import os
 import logging
 import numpy
@@ -22,20 +22,16 @@ class PubMed:
     of text or XML file. Output will be a .xlsx or .csv file with each input abstract assigned a cluster id and top
     cluster keywords/terms for each cluster"""
 
-    def __init__(self):
-        self.cfg_mgr = configparser.ConfigParser()
-        self.script_dir = os.path.dirname(__file__)
-        self._load_config()
+    def __init__(self, config_file):
+        # load configuration file
+        self.config = Config(config_file=config_file)
 
-        log_file = self.cfg_mgr.get('logging', 'logging.directory') + self.cfg_mgr.get('logging', 'log.filename')
+        log_file = self.config.LOG_DIR + self.config.LOGFILE
         logging.basicConfig(format='%(asctime)s::%(levelname)s::%(message)s', level=logging.INFO, filename=log_file)
-
-    def _load_config(self):
-        self.cfg_mgr.read(os.path.abspath(os.path.join(self.script_dir, "config", "default.cfg")))
 
     def process(self, input_file, in_format, output_file, out_format, large_file, use_temp_files, num_docs, collate):
         """resembles a data processing pipeline.
-            ->load input file into a pandas dataframe(for file size < 2 GB)
+            ->load input file into a pandas data frame (for file size < 2 GB)
             ->transform data into Tf-Idf or Hashing vector
             ->cluster the transformed data
         Parameters:
@@ -56,18 +52,18 @@ class PubMed:
             if large_file:
                 if use_temp_files and num_docs == 0:
                     raise ValueError("param num_docs must be a non-zero value when use_temp_files flag is set to True")
-                data_loader = loader.AbstractsXmlSplitLoader(input_file, use_temp_files=use_temp_files,
-                                                             num_docs=num_docs)
+                data_loader = loader.AbstractsXmlSplitLoader(filename=input_file, config=self.config,
+                                                             use_temp_files=use_temp_files, num_docs=num_docs)
             else:
-                data_loader = loader.AbstractsXmlLoader(input_file)
+                data_loader = loader.AbstractsXmlLoader(filename=input_file, config=self.config)
         else:
             custom_input_parser = input_parser.AbstractsParser()
-            data_loader = loader.AbstractsTextLoader(input_file, custom_input_parser)
+            data_loader = loader.AbstractsTextLoader(input_file, config=self.config, parser=custom_input_parser)
 
         if large_file:
             self._process_large_file(data_loader, output_file, out_format, collate)
         else:
-            # smaller datasets can be processed using pandas dataframe and any in-memory vectorizer
+            # smaller datasets can be processed using pandas data frame and any in-memory vectorizer
             self._process_normal_file(data_loader, output_file, out_format, collate)
 
     def _process_large_file(self, data_loader, output_file, out_format, collate):
@@ -86,12 +82,13 @@ class PubMed:
 
         # use Hashing vectorizer to transform data
         logging.info("transforming text - with Hashing vectorizer")
-        vectorizer = features.FeatureExtractor(vectorizer_type='hashing')
-        vectorized_data = vectorizer.vectorize_text([datastreamer_obj]*total_docs)
+        feature_extractor = features.FeatureExtractor(vectorizer_type=self.config.VECTORIZER, config=self.config)
+        feature_extractor.vectorizer = self.config.VECTORIZER
+        vectorized_data = feature_extractor.vectorize_text([datastreamer_obj]*total_docs)
 
         # cluster transformed data
         logging.info("clustering begins")
-        cluster_mgr = cluster.Cluster()
+        cluster_mgr = cluster.Cluster(config=self.config)
         cluster_ids = cluster_mgr.do_minibatch_kmeans(vectorized_data)
         logging.info("clustering complete..gathering output")
 
@@ -101,8 +98,8 @@ class PubMed:
         output_df.columns = ['cluster_id', 'permalink']
 
         if collate:
-            base_url = self.cfg_mgr.get('output', 'permalink.base.search.url')
-            num_clusters = self.cfg_mgr.get('clustering', 'clusters.count')
+            base_url = self.config.PERMALINK_URL
+            num_clusters = self.config.NCLUSTERS
             output_df = collate_(output_df, base_url, num_clusters)
 
         export_dataframe(output_file, output_df, format=out_format, indices=[False])
@@ -117,7 +114,7 @@ class PubMed:
 
             :rtype None"""
 
-        # load input file into a pandas dataframe
+        # load input file into a pandas data frame
         input_dataframe = data_loader.load_(as_="dataframe")
 
         # clean input_dataframe; drop empty rows
@@ -125,12 +122,13 @@ class PubMed:
 
         # use Tf-Idf vectorizer to transform data
         logging.info("transforming text - with Tf-Idf vectorizer")
-        vectorizer = features.FeatureExtractor()
-        vectorized_data = vectorizer.vectorize_text(input_dataframe['content'])
+        feature_extractor = features.FeatureExtractor(config=self.config)
+        feature_extractor.vectorizer = self.config.VECTORIZER
+        vectorized_data = feature_extractor.vectorize_text(input_dataframe['content'])
 
         # cluster transformed data
         logging.info("clustering begins")
-        cluster_mgr = cluster.Cluster()
+        cluster_mgr = cluster.Cluster(config=self.config)
         cluster_ids = cluster_mgr.do_kmeans(vectorized_data)
         logging.info("clustering complete..gathering output")
 
@@ -140,11 +138,12 @@ class PubMed:
         output_df.columns = ['cluster_id', 'permalink']
 
         if collate:
-            base_url = self.cfg_mgr.get('output', 'permalink.base.search.url')
-            num_clusters = self.cfg_mgr.get('clustering', 'clusters.count')
+            base_url = self.config.PERMALINK_URL
+            num_clusters = self.config.NCLUSTERS
             output_df = collate_(output_df, base_url, num_clusters)
 
-        cluster_kw_df = pandas.DataFrame(cluster_mgr.get_top_cluster_terms(vectorizer.get_features(), num_terms=20),
+        cluster_kw_df = pandas.DataFrame(cluster_mgr.get_top_cluster_terms(feature_extractor.get_features(),
+                                                                           num_terms=self.config.NTERMS),
                                          columns=['top cluster keywords'])
         export_dataframe(output_file, output_df, cluster_kw_df, format=out_format,
                          sheet_names=['clusters', 'cluster keywords'], indices=[False, False])
@@ -170,6 +169,7 @@ if __name__ == "__main__":
                         help="set this flag if output file should contain collated cluster results")
     args = parser.parse_args()
 
-    pm_handler = PubMed()
-    pm_handler.process(args.input_file, args.i, args.output_file, args.o, args.large_file, args.use_temp_files,
-                       int(args.num_docs), args.collate)
+    pm_handler = PubMed(config_file=args.config_file)
+    pm_handler.process(input_file=args.input_file, in_format=args.i, output_file=args.output_file, out_format=args.o,
+                       large_file=args.large_file, use_temp_files=args.use_temp_files, num_docs=int(args.num_docs),
+                       collate=args.collate)

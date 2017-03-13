@@ -2,7 +2,6 @@
 # date: 05-Feb-2017
 
 import os
-import configparser
 import pandas
 import pickle
 import logging
@@ -16,13 +15,8 @@ class Loader(object):
 
     """base class"""
 
-    def __init__(self):
-        self.cfg_mgr = configparser.ConfigParser()
-        self.script_dir = os.path.dirname(__file__)
-
-    def _load_config(self):
-        self.cfg_mgr.read(os.path.abspath(os.path.join(self.script_dir, "../..", "config",
-                                                       "default.cfg")))
+    def __init__(self, config):
+        self.config = config
 
     def _validate_file(self, filename):
         """validates input file format and type. skips validation if filename is NA
@@ -33,7 +27,7 @@ class Loader(object):
         # skip validation; input file not used for processing
         if filename == "NA":
             return
-        supported_formats = tuple(self.cfg_mgr.get('input', 'input.file.type').split(","))
+        supported_formats = tuple(self.config.INFILE_TYPE.split(","))
         if os.path.isdir(filename):
             raise ValueError("filename is a directory. expected: a file")
         else:
@@ -50,20 +44,14 @@ class Loader(object):
 class AbstractsTextLoader(Loader):
     """Loads PubMed data from input .txt file."""
 
-    def __init__(self, filename, parser=input_parser.DefaultParser()):
-        super(AbstractsTextLoader).__init__()
+    def __init__(self, filename, config, parser=input_parser.DefaultParser()):
+        super(AbstractsTextLoader).__init__(config)
         self.filename = filename
-        self.cfg_mgr = configparser.ConfigParser()
-        self.script_dir = os.path.dirname(__file__)
+        self.config = config
         self.data_parser = parser
 
-        # load config file
-        self._load_config()
         # validate input file
         self._validate_file(self.filename)
-
-    def _load_config(self):
-        self.cfg_mgr.read(os.path.abspath(os.path.join(self.script_dir, "..\..", "config", "default.cfg")))
 
     def load_(self, as_="dataframe", limit=100):
         """load input data file into a format specified. supports pandas dataframe
@@ -86,7 +74,7 @@ class AbstractsTextLoader(Loader):
 
         collated_data = ""
         last_line = ""
-        record_sep = self.cfg_mgr.get('input', 'abstracts.record.separator')
+        record_sep = self.config.RECORD_SEP
 
         for data in self._read_file():
             if data.startswith("PMID"):
@@ -111,25 +99,22 @@ class AbstractsTextLoader(Loader):
 class AbstractsXmlLoader(Loader, ContentHandler):
     """load PubMed abstracts from .xml file"""
 
-    def __init__(self, filename, parser=input_parser.DefaultParser()):
-        super(AbstractsXmlLoader, self).__init__()
+    def __init__(self, filename, config, parser=input_parser.DefaultParser()):
+        super(AbstractsXmlLoader, self).__init__(config)
         self.filename = filename
-        self.cfg_mgr = configparser.ConfigParser()
-        self.script_dir = os.path.dirname(__file__)
+        self.config = config
         self.data_parser = parser
         self.data_dict = {}
         self.data_index = -1
         self.char_buffer = []
 
-        # load config file
-        self._load_config()
         # validate input file
         self._validate_file(self.filename)
 
         # extract config params
-        log_file = self.cfg_mgr.get('logging', 'logging.directory') + self.cfg_mgr.get('logging', 'log.filename')
+        log_file = self.config.LOG_DIR + self.config.LOGFILE
         logging.basicConfig(format='%(asctime)s::%(levelname)s::%(message)s', level=logging.INFO, filename=log_file)
-        self.pmid_base_url = self.cfg_mgr.get('output', 'permalink.base.url')
+        self.pmid_base_url = self.config.PERMALINK_URL
 
     def _read_file(self):
         return self.filename
@@ -210,14 +195,14 @@ class AbstractsXmlSplitLoader(AbstractsXmlLoader):
        parsing of input file can be skipped if pre-processed temporary files are available.
        extends AbstractsXmlLoader"""
 
-    def __init__(self, filename, threshold=100000, use_temp_files=False, num_docs=0):
-        super(AbstractsXmlSplitLoader, self).__init__(filename)
+    def __init__(self, filename, config, threshold=100000, use_temp_files=False, num_docs=0):
+        super(AbstractsXmlSplitLoader, self).__init__(filename, config)
 
         self.use_temp_files = use_temp_files
         self.threshold = threshold
         self.num_docs_read = 0
         self.temp_filenames = []
-        self.temp_files_dir = self.cfg_mgr.get('input', 'temp.data.directory')
+        self.temp_files_dir = self.config.get('input', 'temp.data.directory')
         self.temp_file_basename = "filepart."
         self.filepart = 1
         self.num_docs_processed = num_docs

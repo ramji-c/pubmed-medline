@@ -48,6 +48,7 @@ if __name__ == "__main__":
     cfg_mgr.add_config_entry('clustering', {'init.count': '3'})
     cfg_mgr.add_config_entry('clustering', {'kmeans.batch.size': '50000'})
     cfg_mgr.add_config_entry('clustering', {'cluster.terms.count': '20'})
+    cfg_mgr.add_config_entry('clustering', {'verbosity': '1'})
 
     cfg_mgr.add_config_entry('feature-extraction', {'document.frequency.min': '0.1'})
     cfg_mgr.add_config_entry('feature-extraction', {'document.frequency.max': '0.8'})
