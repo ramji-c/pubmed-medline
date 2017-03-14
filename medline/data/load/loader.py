@@ -202,7 +202,7 @@ class AbstractsXmlSplitLoader(AbstractsXmlLoader):
         self.threshold = threshold
         self.num_docs_read = 0
         self.temp_filenames = []
-        self.temp_files_dir = self.config.get('input', 'temp.data.directory')
+        self.temp_files_dir = self.config.TEMP_DIR
         self.temp_file_basename = "filepart."
         self.filepart = 1
         self.num_docs_processed = num_docs

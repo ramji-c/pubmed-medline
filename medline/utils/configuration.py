@@ -23,10 +23,14 @@ class Config:
         self.MINDF = None
         self.MAXDF = None
         self.VERBOSITY = None
+        self.INIT_PCNT = None
 
         # feature extraction config params
         self.VECTORIZER = None
         self.VECTORIZER_INPUT = None
+        self.GEN_KW = None
+        self.DIM = None
+        self.NORM = None
 
         # framework config params
         self.LOG_DIR = None
@@ -34,6 +38,7 @@ class Config:
         self.PERMALINK_URL = None
         self.INFILE_TYPE = None
         self.RECORD_SEP = None
+        self.TEMP_DIR = None
 
         # load all config params
         self._load_params()
@@ -69,4 +74,9 @@ class Config:
         self.INFILE_TYPE = self.cfg_mgr.get('input', 'input.file.type')
         self.RECORD_SEP = self.cfg_mgr.get('input', 'abstracts.record.separator')
         self.NINIT = int(self.cfg_mgr.get('clustering', 'init.count'))
-        self.VERBOSITY = bool(self.cfg_mgr.get('clustering', 'verbosity'))
+        self.VERBOSITY = bool(int(self.cfg_mgr.get('clustering', 'verbosity')))
+        self.TEMP_DIR = self.cfg_mgr.get('input', 'temp.data.directory')
+        self.GEN_KW = bool(int(self.cfg_mgr.get('feature-extraction', 'vectorizer.features.avail')))
+        self.DIM = int(self.cfg_mgr.get('feature-extraction', 'features.dimension'))
+        self.NORM = self.cfg_mgr.get('feature-extraction', 'normalization')
+        self.INIT_PCNT = int(self.cfg_mgr.get('clustering', 'init.process.count'))

@@ -35,11 +35,13 @@ class FeatureExtractor:
                 :raises ValueError"""
 
         if vec_type == 'tfidf':
-            self._vectorizer = TfidfVectorizer(input=self.config.VECTORIZER_INPUT, stop_words='english', analyzer='word',
+            self._vectorizer = TfidfVectorizer(input=self.config.VECTORIZER_INPUT, stop_words='english',
+                                               norm=self.config.NORM, analyzer='word',
                                                min_df=self.config.MINDF, max_df=self.config.MAXDF)
         elif vec_type == 'hashing':
             self._vectorizer = make_pipeline(HashingVectorizer(input=self.config.VECTORIZER_INPUT, stop_words='english',
-                                                               analyzer='word'), TfidfTransformer())
+                                                               norm=self.config.NORM, analyzer='word'),
+                                             TfidfTransformer(norm=self.config.NORM))
         else:
             raise ValueError("unsupported vectorizer type. value must be one of tfidf, hashing")
 

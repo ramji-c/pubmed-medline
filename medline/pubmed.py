@@ -12,15 +12,14 @@ from medline.utils.configuration import Config
 
 import pandas
 import argparse
-import os
 import logging
 import numpy
 
 
 class PubMed:
-    """cluster PubMed-Medline journals using k-means algorithm. Input data can be PubMed abstracts in the form
-    of text or XML file. Output will be a .xlsx or .csv file with each input abstract assigned a cluster id and top
-    cluster keywords/terms for each cluster"""
+    """cluster PubMed-Medline journals using k-means algorithm. Input data are PubMed abstracts in the form
+    of text or XML files. Output will be a .xlsx or .csv file with each input abstract assigned a cluster id and top
+    cluster keywords/terms extracted from each cluster"""
 
     def __init__(self, config_file):
         # load configuration file
@@ -75,13 +74,14 @@ class PubMed:
 
             :rtype None"""
 
+        cluster_kw = None
         # load and stream input data
-        logging.info("large file detected..saving input data in temporary files")
+        logging.info("large file detected..streaming input data")
         total_docs, temp_data_files = data_loader.load_(as_="files")
         datastreamer_obj = data_streamer.DataStreamer(temp_data_files)
 
         # use Hashing vectorizer to transform data
-        logging.info("transforming text - with Hashing vectorizer")
+        logging.info("transforming text - with {0} vectorizer".format(self.config.VECTORIZER))
         feature_extractor = features.FeatureExtractor(vectorizer_type=self.config.VECTORIZER, config=self.config)
         feature_extractor.vectorizer = self.config.VECTORIZER
         vectorized_data = feature_extractor.vectorize_text([datastreamer_obj]*total_docs)
@@ -97,13 +97,11 @@ class PubMed:
         output_df = pandas.DataFrame.from_records(out_list, index=numpy.arange(len(out_list)))
         output_df.columns = ['cluster_id', 'permalink']
 
-        if collate:
-            base_url = self.config.PERMALINK_URL
-            num_clusters = self.config.NCLUSTERS
-            output_df = collate_(output_df, base_url, num_clusters)
-
-        export_dataframe(output_file, output_df, format=out_format, indices=[False])
-        logging.info("Processing complete. check output file for clustering results")
+        if self.config.GEN_KW:
+            cluster_kw = cluster_mgr.get_top_cluster_terms(feature_extractor.get_features(),
+                                                           num_terms=self.config.NTERMS)
+        self._gen_output_file(output_file, output_df, out_format, keywords=cluster_kw, kw_df=self.config.GEN_KW,
+                              collate=collate)
 
     def _process_normal_file(self, data_loader, output_file, out_format, collate):
         """load data into pandas dataframe and use in-memory tf-idf vectorizer to process data
@@ -114,6 +112,7 @@ class PubMed:
 
             :rtype None"""
 
+        cluster_kw = None
         # load input file into a pandas data frame
         input_dataframe = data_loader.load_(as_="dataframe")
 
@@ -121,8 +120,8 @@ class PubMed:
         input_dataframe.dropna(inplace=True)
 
         # use Tf-Idf vectorizer to transform data
-        logging.info("transforming text - with Tf-Idf vectorizer")
-        feature_extractor = features.FeatureExtractor(config=self.config)
+        logging.info("transforming text - with {0} vectorizer".format(self.config.VECTORIZER))
+        feature_extractor = features.FeatureExtractor(vectorizer_type=self.config.VECTORIZER, config=self.config)
         feature_extractor.vectorizer = self.config.VECTORIZER
         vectorized_data = feature_extractor.vectorize_text(input_dataframe['content'])
 
@@ -137,16 +136,37 @@ class PubMed:
         output_df = output_df.join(input_dataframe['permalink'])
         output_df.columns = ['cluster_id', 'permalink']
 
+        if self.config.GEN_KW:
+            cluster_kw = cluster_mgr.get_top_cluster_terms(feature_extractor.get_features(),
+                                                           num_terms=self.config.NTERMS)
+        self._gen_output_file(output_file, output_df, out_format, keywords=cluster_kw, kw_df=self.config.GEN_KW,
+                              collate=collate)
+
+    def _gen_output_file(self, output_file, output_df, out_format, keywords=None, kw_df=False, collate=False):
+        """generate output file by exporting dataframe(s)
+            cluster membership dataframe is exported by default. optionally cluster keywords dataframe is also exported
+            Input:
+                :parameter output_file: fully qualified path of output file
+                :parameter output_df: dataframe containing cluster membership
+                :parameter out_format: format of output file - csv or xlsx
+                :parameter keywords: list of cluster kewywords(centroids)
+                :parameter kw_df: flag to indicate if cluster keyword dataframe should be exported
+                :parameter collate: flag to indicate if results should be collated
+
+            :rtype None"""
+
         if collate:
             base_url = self.config.PERMALINK_URL
             num_clusters = self.config.NCLUSTERS
             output_df = collate_(output_df, base_url, num_clusters)
-
-        cluster_kw_df = pandas.DataFrame(cluster_mgr.get_top_cluster_terms(feature_extractor.get_features(),
-                                                                           num_terms=self.config.NTERMS),
-                                         columns=['top cluster keywords'])
-        export_dataframe(output_file, output_df, cluster_kw_df, format=out_format,
-                         sheet_names=['clusters', 'cluster keywords'], indices=[False, False])
+        if kw_df:
+            if not keywords:
+                raise ValueError("param keywords is None; required to generate top cluster keywords dataframe")
+            cluster_kw_df = pandas.DataFrame(keywords, columns=['cluster keywords'])
+            export_dataframe(output_file, output_df, cluster_kw_df, format=out_format,
+                             sheet_names=['clusters', 'cluster keywords'], indices=[False, False])
+        else:
+            export_dataframe(output_file, output_df, format=out_format, sheet_names=['clusters'], indices=[False])
         logging.info("Processing complete. check output file for clustering results")
 
 
@@ -160,7 +180,7 @@ if __name__ == "__main__":
     parser.add_argument('-o', required=True, help="file format - xlsx or csv", choices=['csv', 'xlsx'])
     parser.add_argument('--num-docs', default=0, help="# of documents in input file. required if --use-temp-files flag "
                                                       "is set or clustering should be restricted to subset of input")
-    parser.add_argument('--config-file', help="fully qualified name of config file with cluster parameters")
+    parser.add_argument('--config-file', help="fully qualified path of config file")
     parser.add_argument('--large-file', action='store_true', default=False,
                         help="set this flag for files larger than 2 GB")
     parser.add_argument('--use-temp-files', action='store_true', default=False,
