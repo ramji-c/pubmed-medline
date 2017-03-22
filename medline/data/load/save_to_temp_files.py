@@ -9,6 +9,7 @@ import configparser
 
 from medline.data.load import loader
 from medline.utils import input_parser
+from medline.utils.configuration import Config
 
 
 class Serializer:
@@ -42,7 +43,7 @@ class Serializer:
             full_filename = self.input_path + input_file
             print(full_filename)
             if self.format == "xml":
-                data_loader = loader.AbstractsXmlLoader(full_filename)
+                data_loader = loader.AbstractsXmlLoader(full_filename, config=Config(None))
             else:
                 data_loader = loader.AbstractsTextLoader(full_filename, input_parser.AbstractsParser())
             loaded_data = data_loader.load_(as_="dict")
