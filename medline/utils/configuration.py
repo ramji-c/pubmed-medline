@@ -31,6 +31,7 @@ class Config:
         self.GEN_KW = None
         self.DIM = None
         self.NORM = None
+        self.VECTORIZED_FILES_DIR = None
 
         # framework config params
         self.LOG_DIR = None
@@ -80,3 +81,4 @@ class Config:
         self.DIM = int(self.cfg_mgr.get('feature-extraction', 'features.dimension'))
         self.NORM = self.cfg_mgr.get('feature-extraction', 'normalization')
         self.INIT_PCNT = int(self.cfg_mgr.get('clustering', 'init.process.count'))
+        self.VECTORIZED_FILES_DIR = self.cfg_mgr.get('feature-extraction', 'features.pickled.files.directory')

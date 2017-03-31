@@ -58,6 +58,8 @@ if __name__ == "__main__":
     cfg_mgr.add_config_entry('feature-extraction', {'vectorizer.features.avail': '1'})
     cfg_mgr.add_config_entry('feature-extraction', {'features.dimension': '100'})
     cfg_mgr.add_config_entry('feature-extraction', {'normalization': 'l1'})
+    cfg_mgr.add_config_entry('feature-extraction', {'features.pickled.files.directory':
+                                                    "C:\\Users\\ramji\\Documents\\masters\\datasets\\pubmed\\temp\\"})
 
     cfg_mgr.add_config_entry('logging', {'logging.directory': "C:\\Users\\ramji\\Documents\\masters\\datasets"
                                                               "\\pubmed\\log\\"})

@@ -14,6 +14,9 @@ import pandas
 import argparse
 import logging
 import numpy
+import os
+import pickle
+from datetime import datetime
 
 
 class PubMed:
@@ -28,7 +31,8 @@ class PubMed:
         log_file = self.config.LOG_DIR + self.config.LOGFILE
         logging.basicConfig(format='%(asctime)s::%(levelname)s::%(message)s', level=logging.INFO, filename=log_file)
 
-    def process(self, input_file, in_format, output_file, out_format, large_file, use_temp_files, num_docs, collate):
+    def process(self, input_file, in_format, output_file, out_format, vectorized_file, num_docs,
+                large_file, use_temp_files, collate):
         """resembles a data processing pipeline.
             ->load input file into a pandas data frame (for file size < 2 GB)
             ->transform data into Tf-Idf or Hashing vector
@@ -60,40 +64,67 @@ class PubMed:
             data_loader = loader.AbstractsTextLoader(input_file, config=self.config, parser=custom_input_parser)
 
         if large_file:
-            self._process_large_file(data_loader, output_file, out_format, collate)
+            self._process_large_file(data_loader, output_file, out_format, collate, vectorized_file)
         else:
             # smaller datasets can be processed using pandas data frame and any in-memory vectorizer
             self._process_normal_file(data_loader, output_file, out_format, collate)
 
-    def _process_large_file(self, data_loader, output_file, out_format, collate):
+    def _process_large_file(self, data_loader, output_file, out_format, collate, vectorized_file):
         """stream data from temporary files to a hashing vectorizer to reduce memory overload
             Input:
                 :parameter data_loader: loader object
                 :parameter output_file: fully qualified path of output file
                 :parameter collate: flag to collate results
+                :parameter vectorized_file: file containing features extracted from source data
 
             :rtype None"""
 
         cluster_kw = None
-        # load and stream input data
-        logging.info("large file detected..streaming input data")
-        total_docs, temp_data_files = data_loader.load_(as_="files")
-        datastreamer_obj = data_streamer.DataStreamer(temp_data_files)
+        vectorized_data_dict = {}
+        # form fully qualified path of feature_file
+        if vectorized_file:
+            vectorized_file_fullname = self.config.VECTORIZED_FILES_DIR + vectorized_file
+            if os.path.lexists(vectorized_file_fullname):
+                # skip data loading and load pre-vectorized data and vectorizer
+                logging.info("skipping data loading and vectorizing steps")
+                with open(vectorized_file_fullname, 'rb') as filehandle:
+                    vectorized_data_dict = pickle.load(filehandle)
+                    vectorized_data = vectorized_data_dict['data']
+                    pmid_list = vectorized_data_dict['labels']
+                    feature_extractor = vectorized_data_dict['feature_extractor']
+                logging.info("loaded vectorized data from {0}".format(vectorized_file_fullname))
+        else:
+            # load and stream input data
+            logging.info("large file detected..streaming input data")
+            total_docs, temp_data_files = data_loader.load_(as_="files")
+            datastreamer_obj = data_streamer.DataStreamer(temp_data_files)
+            pmid_list = datastreamer_obj.doc_id_list
 
-        # use Hashing vectorizer to transform data
-        logging.info("transforming text - with {0} vectorizer".format(self.config.VECTORIZER))
-        feature_extractor = features.FeatureExtractor(vectorizer_type=self.config.VECTORIZER, config=self.config)
-        feature_extractor.vectorizer = self.config.VECTORIZER
-        vectorized_data = feature_extractor.vectorize_text([datastreamer_obj]*total_docs)
+            # use Hashing vectorizer to transform data
+            logging.info("transforming text - with {0} vectorizer".format(self.config.VECTORIZER))
+            feature_extractor = features.FeatureExtractor(vectorizer_type=self.config.VECTORIZER, config=self.config)
+            feature_extractor.vectorizer = self.config.VECTORIZER
+            vectorized_data = feature_extractor.vectorize_text([datastreamer_obj]*total_docs)
 
-        # cluster transformed data
+            # pickle the vectorized data and vectorizer to be re-used
+            vectorized_file_fullname = self.config.VECTORIZED_FILES_DIR + \
+                                       "vectorized_{0}_".format(self.config.VECTORIZER) + \
+                                       str(datetime.now().time()).replace(":", ".")
+            vectorized_data_dict['data'] = vectorized_data
+            vectorized_data_dict['labels'] = pmid_list
+            vectorized_data_dict['feature_extractor'] = feature_extractor
+            with open(vectorized_file_fullname, 'wb') as filehandle:
+                pickle.dump(vectorized_data_dict, filehandle)
+            logging.info("saved vectorized data and vectorizer to {0}".format(vectorized_file_fullname))
+
+            # cluster transformed data
         logging.info("clustering begins")
         cluster_mgr = cluster.Cluster(config=self.config)
         cluster_ids = cluster_mgr.do_minibatch_kmeans(vectorized_data)
         logging.info("clustering complete..gathering output")
 
         # merge cluster id of each document with its permalink id
-        out_list = list(zip(cluster_ids, [pmid for pmid in datastreamer_obj.doc_id_list]))
+        out_list = list(zip(cluster_ids, [pmid for pmid in pmid_list]))
         output_df = pandas.DataFrame.from_records(out_list, index=numpy.arange(len(out_list)))
         output_df.columns = ['cluster_id', 'permalink']
 
@@ -149,7 +180,7 @@ class PubMed:
                 :parameter output_file: fully qualified path of output file
                 :parameter output_df: dataframe containing cluster membership
                 :parameter out_format: format of output file - csv or xlsx
-                :parameter keywords: list of cluster kewywords(centroids)
+                :parameter keywords: list of cluster keywords(centroids)
                 :parameter kw_df: flag to indicate if cluster keyword dataframe should be exported
                 :parameter collate: flag to indicate if results should be collated
 
@@ -181,6 +212,7 @@ if __name__ == "__main__":
     parser.add_argument('--num-docs', default=0, help="# of documents in input file. required if --use-temp-files flag "
                                                       "is set or clustering should be restricted to subset of input")
     parser.add_argument('--config-file', help="fully qualified path of config file")
+    parser.add_argument('--vectorized-file', default=None, help="name of features file to be used as input to cluster")
     parser.add_argument('--large-file', action='store_true', default=False,
                         help="set this flag for files larger than 2 GB")
     parser.add_argument('--use-temp-files', action='store_true', default=False,
@@ -191,5 +223,5 @@ if __name__ == "__main__":
 
     pm_handler = PubMed(config_file=args.config_file)
     pm_handler.process(input_file=args.input_file, in_format=args.i, output_file=args.output_file, out_format=args.o,
-                       large_file=args.large_file, use_temp_files=args.use_temp_files, num_docs=int(args.num_docs),
-                       collate=args.collate)
+                       num_docs=int(args.num_docs), vectorized_file=args.vectorized_file,
+                       large_file=args.large_file, use_temp_files=args.use_temp_files, collate=args.collate)
