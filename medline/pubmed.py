@@ -10,9 +10,9 @@ from medline.utils.export_results import export_dataframe
 from medline.utils.collate_results import collate_
 from medline.utils.configuration import Config
 
+import logging
 import pandas
 import argparse
-import logging
 import numpy
 import os
 import pickle
@@ -29,10 +29,12 @@ class PubMed:
         self.config = Config(config_file=config_file)
 
         log_file = self.config.LOG_DIR + self.config.LOGFILE
+        # clear all config handlers - to workaround a mysterious bug
+        logging.getLogger().handlers = []
         logging.basicConfig(format='%(asctime)s::%(levelname)s::%(message)s', level=logging.INFO, filename=log_file)
 
     def process(self, input_file, in_format, output_file, out_format, vectorized_file, num_docs,
-                large_file, use_temp_files, collate):
+                large_file, use_temp_files, collate, use_h2o):
         """resembles a data processing pipeline.
             ->load input file into a pandas data frame (for file size < 2 GB)
             ->transform data into Tf-Idf or Hashing vector
@@ -46,6 +48,7 @@ class PubMed:
             use_temp_files: use temporary pre-processed files(if available) and skip loading input file
             num_docs: number of documents to be clustered
             collate: flag to indicate if output should be collated into 1 record per cluster
+            use_h2o: flag to indicate if processing should be delegated to H2O server cluster
 
         :rtype None"""
 
@@ -64,18 +67,19 @@ class PubMed:
             data_loader = loader.AbstractsTextLoader(input_file, config=self.config, parser=custom_input_parser)
 
         if large_file:
-            self._process_large_file(data_loader, output_file, out_format, collate, vectorized_file)
+            self._process_large_file(data_loader, output_file, out_format, collate, vectorized_file, use_h2o)
         else:
             # smaller datasets can be processed using pandas data frame and any in-memory vectorizer
             self._process_normal_file(data_loader, output_file, out_format, collate)
 
-    def _process_large_file(self, data_loader, output_file, out_format, collate, vectorized_file):
+    def _process_large_file(self, data_loader, output_file, out_format, collate, vectorized_file, use_h2o):
         """stream data from temporary files to a hashing vectorizer to reduce memory overload
             Input:
                 :parameter data_loader: loader object
                 :parameter output_file: fully qualified path of output file
                 :parameter collate: flag to collate results
                 :parameter vectorized_file: file containing features extracted from source data
+                :parameter use_h2o: flag to indicate if processing should be delegated to H2O server cluster
 
             :rtype None"""
 
@@ -100,7 +104,7 @@ class PubMed:
             datastreamer_obj = data_streamer.DataStreamer(temp_data_files)
             pmid_list = datastreamer_obj.doc_id_list
 
-            # use Hashing vectorizer to transform data
+            # use Hashing or tf-idf vectorizer to transform data
             logging.info("transforming text - with {0} vectorizer".format(self.config.VECTORIZER))
             feature_extractor = features.FeatureExtractor(vectorizer_type=self.config.VECTORIZER, config=self.config)
             feature_extractor.vectorizer = self.config.VECTORIZER
@@ -120,7 +124,12 @@ class PubMed:
             # cluster transformed data
         logging.info("clustering begins")
         cluster_mgr = cluster.Cluster(config=self.config)
-        cluster_ids = cluster_mgr.do_minibatch_kmeans(vectorized_data)
+        if use_h2o:
+            logging.info("clustering using H2O server")
+            cluster_ids = cluster_mgr.do_h2o_kmeans(vectorized_data, server_url=self.config.H2O_SERVER_URL)
+        else:
+            logging.info("clustering using scikit-learn")
+            cluster_ids = cluster_mgr.do_minibatch_kmeans(vectorized_data)
         logging.info("clustering complete..gathering output")
 
         # merge cluster id of each document with its permalink id
@@ -219,9 +228,12 @@ if __name__ == "__main__":
                         help='set this flag if processing should use pre-processed files stored in temporary directory')
     parser.add_argument("--collate", action='store_true', default=False,
                         help="set this flag if output file should contain collated cluster results")
+    parser.add_argument("--use-h2o", action='store_true', default=False,
+                        help="set this flag if processing should be done using H2O server cluster")
     args = parser.parse_args()
 
     pm_handler = PubMed(config_file=args.config_file)
     pm_handler.process(input_file=args.input_file, in_format=args.i, output_file=args.output_file, out_format=args.o,
                        num_docs=int(args.num_docs), vectorized_file=args.vectorized_file,
-                       large_file=args.large_file, use_temp_files=args.use_temp_files, collate=args.collate)
+                       large_file=args.large_file, use_temp_files=args.use_temp_files, collate=args.collate,
+                       use_h2o=args.use_h2o)

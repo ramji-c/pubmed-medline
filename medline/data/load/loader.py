@@ -112,8 +112,8 @@ class AbstractsXmlLoader(Loader, ContentHandler):
         self._validate_file(self.filename)
 
         # extract config params
-        log_file = self.config.LOG_DIR + self.config.LOGFILE
-        logging.basicConfig(format='%(asctime)s::%(levelname)s::%(message)s', level=logging.INFO, filename=log_file)
+        # log_file = self.config.LOG_DIR + self.config.LOGFILE
+        # logging.basicConfig(format='%(asctime)s::%(levelname)s::%(message)s', level=logging.INFO, filename=log_file)
         self.pmid_base_url = self.config.PERMALINK_URL
 
     def _read_file(self):

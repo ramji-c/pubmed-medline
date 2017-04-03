@@ -3,10 +3,11 @@
 # cluster input data
 
 from sklearn.cluster import KMeans, MiniBatchKMeans
-from sklearn.decomposition import TruncatedSVD
-from sklearn.pipeline import make_pipeline
-from sklearn.preprocessing import Normalizer
 from sklearn.decomposition import LatentDirichletAllocation
+import h2o
+from h2o.estimators import H2OKMeansEstimator
+from h2o.exceptions import H2OConnectionError
+import logging
 
 
 class Cluster:
@@ -18,6 +19,9 @@ class Cluster:
         self.config = config
         self.model = None
         self.svd = None
+
+        # log_file = self.config.LOG_DIR + self.config.LOGFILE
+        # logging.basicConfig(format='%(asctime)s::%(levelname)s::%(message)s', level=logging.INFO, filename=log_file)
 
     def do_kmeans(self, dataset):
         """vanilla k-means - Llyod's algorithm.
@@ -101,3 +105,28 @@ class Cluster:
         self.model = LatentDirichletAllocation(n_topics=self.config.NTOPICS, max_iter=self.config.NITER)
         self.model.fit(dataset)
         return self.model.components_
+
+    def do_h2o_kmeans(self, dataset, server_url):
+        """use the h2o module to perform k-means clustering.
+            This method delegates clustering to a H2O server instance(local or remote). A connection attempt will be
+            made to the provided server_url before clustering is initiated.
+            input:
+                :param dataset: input data - term document matrix
+                :param server_url: URL of the H2O server instance on which clustering would run
+            output:
+                labels_: a list of cluster identifiers - 1 per input document
+            :raises ConnectionError"""
+
+        # establish connection to H20 server
+        try:
+            h2o.connect(url=server_url, verbose=False)
+            logging.info("connected to H2O server")
+            h2o_dataframe = h2o.H2OFrame(python_obj=dataset)
+            self.model = H2OKMeansEstimator(max_iterations=self.config.NITER, k=self.config.NCLUSTERS, init="PlusPlus",
+                                            standardize=False)
+            self.model.train(training_frame=h2o_dataframe)
+            logging.info("modelling complete. predicting cluster membership")
+            return self.model.predict(h2o_dataframe)["predict"].as_data_frame(use_pandas=False, header=False)
+        except H2OConnectionError:
+            logging.error("unable to connect to H2O server @ {0}".format(server_url))
+            raise ConnectionError("unable to connect to H2O server. check if server is running at specified URL")

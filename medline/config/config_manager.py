@@ -29,7 +29,7 @@ class ConfigMgr:
 if __name__ == "__main__":
 
     cfg_mgr = ConfigMgr()
-    cfg_mgr.create_sections(['input', 'clustering', 'feature-extraction', 'output', 'logging'])
+    cfg_mgr.create_sections(['input', 'clustering', 'feature-extraction', 'output', 'logging', 'framework'])
 
     cfg_mgr.add_config_entry('input', {'input.file.type': '.txt,.xml'})
     cfg_mgr.add_config_entry('input', {'input.filters': 'none'})
@@ -64,5 +64,5 @@ if __name__ == "__main__":
     cfg_mgr.add_config_entry('logging', {'logging.directory': "C:\\Users\\ramji\\Documents\\masters\\datasets"
                                                               "\\pubmed\\log\\"})
     cfg_mgr.add_config_entry('logging', {'log.filename': "pubmed_clustering.log"})
-
+    cfg_mgr.add_config_entry('framework', {'h2o.server.url': 'http://localhost:54321'})
     cfg_mgr.save_config_file("default.cfg")

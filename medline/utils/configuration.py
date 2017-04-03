@@ -40,6 +40,7 @@ class Config:
         self.INFILE_TYPE = None
         self.RECORD_SEP = None
         self.TEMP_DIR = None
+        self.H2O_SERVER_URL = None
 
         # load all config params
         self._load_params()
@@ -82,3 +83,4 @@ class Config:
         self.NORM = self.cfg_mgr.get('feature-extraction', 'normalization')
         self.INIT_PCNT = int(self.cfg_mgr.get('clustering', 'init.process.count'))
         self.VECTORIZED_FILES_DIR = self.cfg_mgr.get('feature-extraction', 'features.pickled.files.directory')
+        self.H2O_SERVER_URL = self.cfg_mgr.get('framework', 'h2o.server.url')

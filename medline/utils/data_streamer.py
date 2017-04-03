@@ -14,7 +14,7 @@ class DataStreamer:
         DataStreamer.files = files
         DataStreamer.docs_queue = queue.deque([])
         DataStreamer.file_queue = queue.deque(files)
-        logging.basicConfig(format='%(asctime)s::%(levelname)s::%(message)s', level=logging.INFO)
+        # logging.basicConfig(format='%(asctime)s::%(levelname)s::%(message)s', level=logging.INFO)
         DataStreamer.doc_id_list = []
 
     @staticmethod
