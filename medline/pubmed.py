@@ -34,7 +34,7 @@ class PubMed:
         logging.basicConfig(format='%(asctime)s::%(levelname)s::%(message)s', level=logging.INFO, filename=log_file)
 
     def process(self, input_file, in_format, output_file, out_format, vectorized_file, num_docs,
-                large_file, use_temp_files, collate, use_h2o):
+                large_file, use_temp_files, collate, use_h2o, h2o_url):
         """resembles a data processing pipeline.
             ->load input file into a pandas data frame (for file size < 2 GB)
             ->transform data into Tf-Idf or Hashing vector
@@ -49,6 +49,7 @@ class PubMed:
             num_docs: number of documents to be clustered
             collate: flag to indicate if output should be collated into 1 record per cluster
             use_h2o: flag to indicate if processing should be delegated to H2O server cluster
+            h20_url: URL of H2O serve to connect to
 
         :rtype None"""
 
@@ -67,12 +68,12 @@ class PubMed:
             data_loader = loader.AbstractsTextLoader(input_file, config=self.config, parser=custom_input_parser)
 
         if large_file:
-            self._process_large_file(data_loader, output_file, out_format, collate, vectorized_file, use_h2o)
+            self._process_large_file(data_loader, output_file, out_format, collate, vectorized_file, use_h2o, h2o_url)
         else:
             # smaller datasets can be processed using pandas data frame and any in-memory vectorizer
             self._process_normal_file(data_loader, output_file, out_format, collate)
 
-    def _process_large_file(self, data_loader, output_file, out_format, collate, vectorized_file, use_h2o):
+    def _process_large_file(self, data_loader, output_file, out_format, collate, vectorized_file, use_h2o, h2o_url):
         """stream data from temporary files to a hashing vectorizer to reduce memory overload
             Input:
                 :parameter data_loader: loader object
@@ -126,7 +127,12 @@ class PubMed:
         cluster_mgr = cluster.Cluster(config=self.config)
         if use_h2o:
             logging.info("clustering using H2O server")
-            cluster_ids = cluster_mgr.do_h2o_kmeans(vectorized_data, server_url=self.config.H2O_SERVER_URL)
+            # override H2O server URL in config
+            if h2o_url:
+                server_url = h2o_url
+            else:
+                server_url = self.config.H2O_SERVER_URL
+            cluster_ids = cluster_mgr.do_h2o_kmeans(vectorized_data, server_url=server_url)
         else:
             logging.info("clustering using scikit-learn")
             cluster_ids = cluster_mgr.do_minibatch_kmeans(vectorized_data)
@@ -230,10 +236,11 @@ if __name__ == "__main__":
                         help="set this flag if output file should contain collated cluster results")
     parser.add_argument("--use-h2o", action='store_true', default=False,
                         help="set this flag if processing should be done using H2O server cluster")
+    parser.add_argument("--h2o-url", default=None, help="URL of the H2O server to connect")
     args = parser.parse_args()
 
     pm_handler = PubMed(config_file=args.config_file)
     pm_handler.process(input_file=args.input_file, in_format=args.i, output_file=args.output_file, out_format=args.o,
                        num_docs=int(args.num_docs), vectorized_file=args.vectorized_file,
                        large_file=args.large_file, use_temp_files=args.use_temp_files, collate=args.collate,
-                       use_h2o=args.use_h2o)
+                       use_h2o=args.use_h2o, h2o_url=args.h2o_url)
