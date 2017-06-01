@@ -54,8 +54,8 @@ class Cluster:
 
         self.model = MiniBatchKMeans(n_clusters=self.config.NCLUSTERS, n_init=self.config.NINIT,
                                      batch_size=self.config.BATCHSIZE, max_iter=self.config.NITER, verbose=self.config)
-        self.model.fit_transform(dataset)
-        return self.model.labels_
+        self.model.fit(dataset)
+        return self.model.predict(dataset)
 
     def print_top_terms(self, features, model='kmeans'):
         """print top 'n' features(cluster centers) of each cluster

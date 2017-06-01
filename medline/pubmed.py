@@ -171,6 +171,9 @@ class PubMed:
         feature_extractor.vectorizer = self.config.VECTORIZER
         vectorized_data = feature_extractor.vectorize_text(input_dataframe['content'])
 
+        # write vectorized text to file
+        numpy.save(self.config.TEMP_DIR + "vectorized_text", vectorized_data.todense())
+
         # cluster transformed data
         logging.info("clustering begins")
         cluster_mgr = cluster.Cluster(config=self.config)

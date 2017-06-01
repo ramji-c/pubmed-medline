@@ -5,6 +5,7 @@
 from sklearn.feature_extraction.text import TfidfVectorizer, HashingVectorizer, TfidfTransformer
 from sklearn.pipeline import make_pipeline
 from nltk.stem import SnowballStemmer
+import numpy
 
 
 class FeatureExtractor:
@@ -36,7 +37,7 @@ class FeatureExtractor:
 
         if vec_type == 'tfidf':
             self._vectorizer = TfidfVectorizer(input=self.config.VECTORIZER_INPUT, stop_words='english',
-                                               norm=self.config.NORM, analyzer='word',
+                                               norm=self.config.NORM, analyzer='word', max_features=10000,
                                                min_df=self.config.MINDF, max_df=self.config.MAXDF)
         elif vec_type == 'hashing':
             self._vectorizer = make_pipeline(HashingVectorizer(input=self.config.VECTORIZER_INPUT, stop_words='english',
